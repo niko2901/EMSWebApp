@@ -1,0 +1,13 @@
+@inject NavigationManager NavigationManager
+
+@code {
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // forceLoad: true drops the WebSocket connection safely
+            // and performs a clean browser HTTP request to the login page.
+            NavigationManager.NavigateTo("/Account/Login", forceLoad: true);
+        }
+    }
+}

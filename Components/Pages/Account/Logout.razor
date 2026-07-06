@@ -1,0 +1,23 @@
+﻿@page "/Account/Logout"
+@using Microsoft.AspNetCore.Identity
+@using EMSWebApp.Models
+@inject SignInManager<AppUser> SignInManager
+@inject NavigationManager NavigationManager
+
+@code {
+	[CascadingParameter]
+	private HttpContext HttpContext { get; set; } = default!;
+
+	protected override async Task OnInitializedAsync()
+	{
+        // Check if the user is actually authenticated before trying to sign out
+        if (HttpContext.User.Identity?.IsAuthenticated == true)
+        {
+            // This clears the ASP.NET Core Identity authentication cookie from the browser
+            await SignInManager.SignOutAsync();
+        }
+
+        // Force a hard reload back to the home page so the entire app state resets
+        NavigationManager.NavigateTo("/", forceLoad: true);
+	}
+}
