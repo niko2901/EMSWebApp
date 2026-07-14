@@ -1,0 +1,26 @@
+﻿
+.main-page {
+    gap: 2.6rem;
+}
+
+.card-dash {
+    min-width: 200px;
+    max-width: 300px;
+    padding: 1rem 2rem;
+    border-radius: 16px;
+    flex-flow: row;
+    transition: ease-in-out 0.2s
+}
+
+    .card-dash::after {
+        content: "->";
+    }
+
+    .card-dash:hover {
+        border: 1px solid rgb(73, 144, 255, 0.87);
+        transition: ease-in-out 0.2s
+    }
+
+.stats {
+    border-radius: 20px;
+}

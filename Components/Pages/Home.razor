@@ -6,8 +6,54 @@
 @using Microsoft.AspNetCore.Components.Forms;
 @using Microsoft.AspNetCore.Components.Authorization;
 
+<PageTitle>Dashboard</PageTitle>
 
-<h1>Home</h1>
+<div class="d-flex flex-column h-100 w-100 pt-3" style="max-width: 80rem;">
+	<AuthorizeView>
+		<h4 class="fw-bold">Welcome back, @context.User.FindFirst("FullName")?.Value</h4>
+		<p>Let's start with the summarize view of events</p>
+	</AuthorizeView>
+
+	<div class="main-page d-flex flex-column h-100 mt-3">
+		<div class="d-flex flex-row w-100 justify-content-evenly gap-2">
+			<a class="card card-dash flex-grow-1 text-decoration-none" href="/events">
+				<div class="card-body">
+					<p>icon here</p>
+					<p>event count</p>
+					<h5>Upcoming Events</h5>
+				</div>
+			</a>
+
+			<a class="card card-dash flex-grow-1 text-decoration-none" href="/events">
+				<div class="card-body">
+					<p>icon here</p>
+					<p>event count</p>
+					<h5>Today' Event</h5>
+				</div>
+			</a>
+
+			<a class="card card-dash flex-grow-1 text-decoration-none" href="/events">
+				<div class="card-body">
+					<p>icon here</p>
+					<p>event count</p>
+					<h5>Today' Event</h5>
+				</div>
+			</a>
+
+			<a class="card card-dash flex-grow-1 text-decoration-none" href="/events">
+				<div class="card-body">
+					<p>icon here</p>
+					<p>event count</p>
+					<h5>Today' Event</h5>
+				</div>
+			</a>
+		</div>
+
+		<div class="card stats flex-grow-1 w-100 bg-white">
+
+		</div>
+	</div>
+</div>
 
 @code {
 

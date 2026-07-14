@@ -1,0 +1,316 @@
+﻿@page "/events/new"
+@attribute [Authorize]
+
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.EntityFrameworkCore
+@using EMSWebApp.Models
+@using System.Security.Claims
+@using System.IO
+@using Microsoft.AspNetCore.Hosting
+
+@inject IWebHostEnvironment Environment
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager NavManager
+
+@inject EMSWebApp.Data.AppDbContext Db
+
+@rendermode InteractiveServer
+
+@if (sysError != null)
+{
+	<div class="fixed-top alert alert-danger w-25">@sysError</div>
+}
+
+<div class="d-flex flex-column w-100 p-4" style="max-width: 48rem;">
+	@* Header *@
+	<a class="btn btn-outline-secondary border mb-3 px-3 py-1" style="width: max-content; border-radius: 8px;" href="/events">Back</a>
+	<div class="mb-4">
+		<h4 class="fw-bold">Create New Event</h4>
+	</div>
+
+	@* Form Body *@
+	<div class="mb-5">
+
+		<EditForm Model="EventModel" OnValidSubmit="HandleSubmit">
+			<DataAnnotationsValidator />
+
+			@* Banner upload *@
+			<div class="card p-4 mb-3">
+				<h6 class="mb-3 fw-bold">Banner Image</h6>
+
+				@* Click to upload banner container *@
+				<label class="d-flex flex-column justify-content-center align-items-center rounded-3 @(!string.IsNullOrEmpty(previewUrl) ? "d-none" : "")" style="height: 8rem; border:2px dashed #7F7F7F; cursor:pointer">
+					<span class="text-secondary">Click to upload banner</span>
+					<InputFile OnChange="HandleFileSelected" class="d-none" accept="image/*"/>
+				</label>
+
+				@if (!string.IsNullOrEmpty(previewUrl))
+				{
+					@* If banner is uploaded show the image *@
+					<div class="d-flex justify-content-end" style="height: 10rem; width: 100%;">
+						<img class="h-100 w-100" style="border-radius: .5rem; object-fit: cover;" src="@previewUrl" alt="Alternate Text" />
+						<button type="button" class="position-absolute btn-close m-2 bg-white border" @onclick="ClearSelectedFile" aria-label="Close"></button>
+					</div>
+				}
+			</div>
+
+			@* Container for event details *@
+			<div class="card p-4 gap-3 mb-3">
+				<h6 class="fw-bold">Event Details</h6>
+
+				@* Event title *@
+				<div class="">
+					<label class="form-label">Title *</label>
+					<InputText class="form-control" @bind-Value="EventModel.Name" placeholder="Event title" />
+					<ValidationMessage For="@(() => EventModel.Name)" />
+				</div>
+
+				@* Event Description *@
+				<div class="">
+					<label class="form-label">Description</label>
+					<InputTextArea class="form-control" @bind-Value="EventModel.Description" placeholder="Describe the event" rows="3" />
+					<ValidationMessage For="@(() => EventModel.Description)" />
+				</div>
+
+				@* Event Category and capacity *@
+					@* - the event capacity must default to venue capacity if no value inputted *@
+				<div class="row row-cols-1 row-cols-md-2 g-3">
+					<div class="col">
+						<label class="form-label">Category</label>
+						<InputText class="form-control" @bind-Value="EventModel.Category" placeholder="e.g. Conference, Brainstorming" />
+						<ValidationMessage For="@(() => EventModel.Category)" />
+					</div>
+
+					<div class="col">
+						<label class="form-label">Capacity</label>
+						<InputNumber class="form-control" @bind-Value="EventModel.Capacity" placeholder="Leave blank for default venue capacity"/>
+						<ValidationMessage For="@(() => EventModel.Capacity)" />
+					</div>
+				</div>
+
+				@* Event type container*@
+				<div class="">
+					<label class="form-label">Event Type</label>
+					<select class="form-select" @bind="EventModel.EventType">
+						@foreach (var t in Enum.GetValues<EventTypeEnum>())
+						{
+							<option value="@t">@t.ToString()</option>
+						}
+					</select>
+					<ValidationMessage For="@(() => EventModel.EventType)" />
+				</div>
+			</div>
+
+			<div class="card p-4 gap-3 mb-3">
+				<h6 class="fw-bold">Date, Time & Location</h6>
+
+				<div class="row row-cols-1 row-cols-md-2 g-3">
+					<div class="col">
+						<label class="form-label">Start Date & Time *</label>
+						<InputDate Type="InputDateType.DateTimeLocal" class="form-control" @bind-value="EventModel.StartDate" />
+						<ValidationMessage For="@(() => EventModel.StartDate)" />
+					</div>
+
+					<div class="col">
+						<label class="form-label">End Date & Time *</label>
+						<InputDate Type="InputDateType.DateTimeLocal" class="form-control" @bind-Value="EventModel.EndDate"/>
+						<ValidationMessage For="@(() => EventModel.EndDate)" />
+					</div>
+				</div>
+
+				<div>
+					<label class="form-label">Venue *</label>
+					<InputSelect class="form-select" @bind-Value="EventModel.VenueId">
+						<option value="">No venue selected</option>
+						@foreach (var ven in venues)
+						{
+							<option value="@ven.Id">@ven.Name</option>
+						}
+					</InputSelect>
+					<ValidationMessage For="@(() => EventModel.VenueId)" />
+				</div>
+			</div>
+
+			<div class="card p-4 gap-3 mb-3">
+				<h6 class="fw-bold">Registration Date & Time</h6>
+
+				<div class="row row-cols-1 row-cols-md-2 g-3">
+					<div class="col">
+						<label class="form-label">Registration Start</label>
+						<InputDate Type="InputDateType.DateTimeLocal" class="form-control" @bind-Value="EventModel.RegistrationStart"/>
+					</div>
+
+					<div class="col">
+						<label class="form-label">Registration Deadline</label>
+						<InputDate Type="InputDateType.DateTimeLocal" class="form-control" @bind-Value="EventModel.RegistrationDeadline" />
+					</div>
+				</div>
+			</div>
+
+			<div class="d-flex flex-row justify-content-between gap-2">
+				<a class="btn btn-outline-secondary" href="/events">Cancel</a>
+				<div>
+					<button type="submit" class="btn btn-secondary" @onclick="() => setEventStatus(EventStatusEnum.Draft)">Draft</button>
+					<button type="submit" class="btn btn-primary" @onclick="() => setEventStatus(EventStatusEnum.Published)">Create Event</button>
+				</div>
+			</div>
+		</EditForm>
+	</div>
+</div>
+
+@code {
+	private List<Venue> venues = new();
+	private IBrowserFile? selectedFile;
+	private string? previewUrl;
+	private string? sysError { get; set; }
+
+	private UserEvent EventModel { get; set; } = new UserEvent
+	{
+		Name = string.Empty,
+		Description = string.Empty,
+		Category = string.Empty,
+		EventType = EventTypeEnum.Public,
+		Status = EventStatusEnum.Draft,
+	};
+
+	protected override async Task OnInitializedAsync()
+	{
+		await LoadVenues();
+	}
+
+	// Load the venues and change the number of venues
+	private async Task LoadVenues()
+	{
+		venues = await Db.Venues.AsNoTracking()
+								.OrderBy(e => e.Id)
+								.Where(e => e.Status == VenueStatusEnum.Available)
+								.Take(100).ToListAsync();
+	}
+
+	private void ClearSelectedFile()
+	{
+		selectedFile = null;
+		previewUrl = string.Empty;
+	}
+
+	private async Task HandleFileSelected(InputFileChangeEventArgs e) 
+	{
+		selectedFile = e.File;
+
+		if (selectedFile != null)
+		{
+			try
+			{
+				long maxFileSize = 1024 * 1024 * 5;
+
+				using var stream = selectedFile.OpenReadStream(maxFileSize);
+				using var memoryStream = new MemoryStream();
+				await stream.CopyToAsync(memoryStream);
+
+				var base64 = Convert.ToBase64String(memoryStream.ToArray());
+				previewUrl = $"data:{selectedFile.ContentType};base64,{base64}";
+			}
+			catch (Exception ex)
+			{
+				sysError = $"Preview generation failed: {ex.Message}";
+			}
+		}
+	}
+
+	private void setEventStatus (EventStatusEnum targetStatus) 
+	{
+		EventModel.Status = targetStatus;
+	}
+
+	private async Task HandleSubmit()
+	{
+
+		var AuthState = await AuthStateProvider.GetAuthenticationStateAsync();
+		var user = AuthState.User;
+
+
+		if (user.Identity?.IsAuthenticated != true)
+		{
+			sysError = "Session expired. Please log in again to register events.";
+			return;
+		}
+
+		var rawUserId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+		if (!int.TryParse(rawUserId, out int currentUserId))
+		{
+			sysError = "Unable to resolve user security identification context.";
+			return;
+		}
+
+		if (selectedFile != null)
+		{
+			try
+			{
+				var uploadsFolder = Path.Combine(Environment.WebRootPath, "uploads");
+				if (!Directory.Exists(uploadsFolder))
+				{
+					Directory.CreateDirectory(uploadsFolder);
+				}
+
+				var fileExtension = Path.GetExtension(selectedFile.Name);
+				var uniqueFileName = $"{Guid.NewGuid()}{fileExtension}";
+				var secureSavePath = Path.Combine(uploadsFolder, uniqueFileName);
+
+				long maxFileSize = 1024 * 2024 * 5;
+				using var fileStream = selectedFile.OpenReadStream(maxFileSize);
+				using var diskStream = new FileStream(secureSavePath, FileMode.Create);
+				await fileStream.CopyToAsync(diskStream);
+
+				EventModel.FileName = selectedFile.Name;
+				EventModel.StorageUrl = $"/uploads/{uniqueFileName}";
+			}
+			catch (Exception ex)
+			{
+				sysError = $"1{ex.Message}";
+				return;
+			}
+		}
+
+		EventModel.AppUserId = currentUserId;
+		var chosenVenue = venues.FirstOrDefault(v => v.Id == EventModel.VenueId);
+
+		if (EventModel.Capacity == null || EventModel.Capacity == 0)
+		{
+			if (chosenVenue != null)
+			{
+				EventModel.Capacity = chosenVenue.Capacity;
+			}
+		}
+
+		if (EventModel.RegistrationStart == null)
+		{
+			EventModel.RegistrationStart = DateTime.UtcNow;
+		}
+
+		if (EventModel.RegistrationDeadline == null)
+		{
+			EventModel.RegistrationDeadline = EventModel.StartDate;
+		}
+
+		try
+		{
+			Db.UserEvents.Add(EventModel);
+			await Db.SaveChangesAsync();
+
+			NavManager.NavigateTo("/events");
+		}
+		catch (Exception ex)
+		{
+			if (File.Exists(EventModel.StorageUrl))
+			{
+				File.Delete(EventModel.StorageUrl);
+			}
+
+			sysError = $"2{ex.Message}";
+			return;
+		}
+	}
+}

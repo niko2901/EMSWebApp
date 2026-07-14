@@ -1,0 +1,30 @@
+﻿body {
+}
+
+.form-select {
+    width: max-content;
+}
+
+.form-control:focus {
+    outline: none;
+    border: none;
+/*    border: 2px solid rgb(82, 128, 255, 0.90);*/
+}
+
+.form-control:active {
+    outline: none;
+    border: none;
+}
+
+.hover-card img{
+    transition: ease-in-out 0.3s;
+}
+
+.hover-card:hover {
+    border: 1px #5296FA solid;
+    transition: ease-in-out 0.3s;
+}
+.hover-card:hover img {
+    transform: scale(1.05);
+    transition: ease-in-out 0.3s;
+}

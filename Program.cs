@@ -1,18 +1,18 @@
-using System.Text;
 using EMSWebApp.Components;
 using EMSWebApp.Data;
 using EMSWebApp.Models;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Metadata.Internal;
-using Microsoft.IdentityModel.Tokens;
+using Microsoft.AspNetCore.Components.Authorization;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
+
+builder.Services.AddCascadingAuthenticationState();
+
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
@@ -32,7 +32,7 @@ builder.Services.AddIdentity<AppUser, IdentityRole<int>>(options =>
 builder.Services.ConfigureApplicationCookie(options =>
 {
     options.Cookie.HttpOnly = true;
-    options.ExpireTimeSpan = TimeSpan.FromMinutes(30);
+    options.ExpireTimeSpan = TimeSpan.FromHours(8);
     options.LoginPath = "/Account/login";
     options.LogoutPath = "/Account/logout";
     options.SlidingExpiration = true;
@@ -74,23 +74,27 @@ using (var scope = app.Services.CreateScope())
         await roleManager.CreateAsync(new IdentityRole<int> { Name = "Admin" });
     }
 
+    if (!await roleManager.RoleExistsAsync("User"))
+    {
+        await roleManager.CreateAsync(new IdentityRole<int> { Name = "User" });
+    }
+
     // 2. Check if the admin user already exists
-    var adminName = "admin";
-    var adminEmail = "admin@ems.com";
+    var adminEmail = "admin2@ems.com";
     var adminUser = await userManager.FindByEmailAsync(adminEmail);
 
     if (adminUser == null)
     {
         var newAdmin = new AppUser
         {
-            UserName = adminName,
+            UserName = adminEmail,
             Email = adminEmail,
             FullName = "System Administrator",
             EmailConfirmed = true // Bypasses email verification for this seed user
         };
 
         // 3. Create the admin with a default secure password
-        var result = await userManager.CreateAsync(newAdmin, "AdminPassword123!");
+        var result = await userManager.CreateAsync(newAdmin, "admin123");
 
         if (result.Succeeded)
         {

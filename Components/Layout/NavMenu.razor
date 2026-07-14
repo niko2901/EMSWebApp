@@ -1,4 +1,9 @@
-﻿<div class="top-row ps-3 navbar navbar-dark">
+﻿@attribute [Authorize]
+
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+
+<div class="top-row ps-3 navbar navbar-dark">
     <div class="container-fluid">
         <a class="navbar-brand" href="">EMSWebApp</a>
     </div>
@@ -7,23 +12,49 @@
 <input type="checkbox" title="Navigation menu" class="navbar-toggler" />
 
 <div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
-    <nav class="flex-column">
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home
-            </NavLink>
+    <nav class="d-flex flex-column h-100 justify-content-between">
+        <div class="flex-column">
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+                    <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Dashboard
+                </NavLink>
+            </div>
+
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="events">
+                    <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> Events
+                </NavLink>
+            </div>
+
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="venue">
+                    <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Venues
+                </NavLink>
+            </div>
+
+            <AuthorizeView Roles="Admin">
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="roles">
+                        <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Roles
+                    </NavLink>
+                </div>
+            </AuthorizeView>
         </div>
 
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="counter">
-                <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> Counter
-            </NavLink>
-        </div>
-
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="weather">
-                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Weather
-            </NavLink>
+        @* User logout and info container *@
+        <div class="flex-column p-1">
+            <hr />
+            <AuthorizeView>
+                <div class="py-2 px-3">
+                    <p class="text-white">@context.User.FindFirst("FullName")?.Value</p>
+                    <p class="text-white">@context.User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value</p>
+                </div>
+                <div class="nav-item px-3">
+                    <a class="nav-link btn text-white text-center" href="/Account/Logout">
+                        Sign Out
+                    </a>
+                </div>
+            </AuthorizeView>
         </div>
     </nav>
 </div>

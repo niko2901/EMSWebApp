@@ -2,23 +2,12 @@
 @using Microsoft.AspNetCore.Components.Authorization
 
 <div class="page">
-    <div class="sidebar">
+    <div class="sidebar vh-100">
         <NavMenu />
     </div>
 
     <main>
-        <AuthorizeView>
-            <div class="d-flex justify-content-between top-row px-4">
-                <div>@context.User.Identity?.Name</div>
-                <div class="">
-                    <a class="nav-link btn btn-danger text-white text-center" href="/Account/Logout">
-                        Log Out
-                    </a>
-                </div>
-            </div>
-        </AuthorizeView>
-
-        <article class="content px-4">
+        <article class="page-container vh-100">
             @Body
         </article>
     </main>
@@ -29,3 +18,7 @@
     <a href="" class="reload">Reload</a>
     <a class="dismiss">🗙</a>
 </div>
+
+@code {
+    
+}

@@ -7,8 +7,8 @@
 @inject UserManager<AppUser> UserManager
 @inject NavigationManager NavigationManager
 
-<div class="row justify-content-center mt-5">
-    <div class="col-md-5">
+<div class="d-flex justify-content-center align-content-center align-items-center h-100">
+    <div class="col-md-4">
         <div class="card shadow-sm">
             <div class="card-body">
                 <h3 class="card-title text-center mb-4">Create an Account</h3>
@@ -25,30 +25,29 @@
 
                 <EditForm Model="Input" FormName="RegisterForm" OnValidSubmit="RegisterUser">
                     <DataAnnotationsValidator />
-                    <ValidationSummary class="text-danger" />
 
                     <div class="mb-3">
                         <label class="form-label">Full Name</label>
                         <InputText @bind-Value="Input.FullName" class="form-control" placeholder="John Doe" />
-                        <ValidationMessage For="() => Input.FullName" class="text-danger" />
+                        <ValidationMessage For="() => Input.FullName" class="alert alert-danger text-danger py-2 mt-1 " />
                     </div>
 
                     <div class="mb-3">
                         <label class="form-label">Email Address</label>
                         <InputText @bind-Value="Input.Email" class="form-control" placeholder="name@example.com" />
-                        <ValidationMessage For="() => Input.Email" class="text-danger" />
+                        <ValidationMessage For="() => Input.Email" class="alert alert-danger text-danger py-2 mt-1 " />
                     </div>
 
                     <div class="mb-3">
                         <label class="form-label">Password</label>
                         <InputText @bind-Value="Input.Password" type="password" class="form-control" placeholder="Minimum 8 characters" />
-                        <ValidationMessage For="() => Input.Password" class="text-danger" />
+                        <ValidationMessage For="() => Input.Password" class="alert alert-danger text-danger py-2 mt-1 " />
                     </div>
 
                     <div class="mb-3">
                         <label class="form-label">Confirm Password</label>
                         <InputText @bind-Value="Input.ConfirmPassword" type="password" class="form-control" placeholder="Repeat password" />
-                        <ValidationMessage For="() => Input.ConfirmPassword" class="text-danger" />
+                        <ValidationMessage For="() => Input.ConfirmPassword" class="alert alert-danger text-danger py-2 mt-1 " />
                     </div>
 
                     <div class="d-grid gap-2">
@@ -89,8 +88,17 @@
 
         if (result.Succeeded)
         {
-            // Optional: If you want all newly registered users to be regular "User" role by default:
-            // await UserManager.AddToRoleAsync(user, "User");
+            var roleResult = await UserManager.AddToRoleAsync(user, "User");
+
+            if (!roleResult.Succeeded)
+            {
+                // Collect any role assignment errors if they happen
+                foreach (var error in roleResult.Errors)
+                {
+                    Errors.Add($"Account created, but role assignment failed: {error.Description}");
+                }
+                return;
+            }
 
             // Redirect smoothly to the login page so they can log in
             NavigationManager.NavigateTo("/Account/Login");
@@ -100,7 +108,15 @@
             // Collect any errors (e.g., password missing symbols, email already taken)
             foreach (var error in result.Errors)
             {
-                Errors.Add(error.Description);
+                // Intercept the default "Username is already taken" code rule
+                if (error.Code == "DuplicateUserName")
+                {
+                    Errors.Add($"Email '{Input.Email}' is already used.");
+                }
+                else
+                {
+                    Errors.Add(error.Description);
+                }
             }
         }
     }

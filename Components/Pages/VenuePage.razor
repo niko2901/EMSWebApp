@@ -1,0 +1,257 @@
+﻿@page "/venue"
+@attribute [Authorize]
+
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.EntityFrameworkCore
+@using EMSWebApp.Models
+
+@inject EMSWebApp.Data.AppDbContext Db
+
+@rendermode InteractiveServer
+
+<PageTitle>Weather</PageTitle>
+
+<div class="h-100 w-100" style="max-width: 64rem; padding: 1.5rem">
+	<div class="d-flex flex-row justify-content-between align-items-center w-100 mb-3">
+		<div>
+			<h3 class="fw-bold">Venues</h3>
+			<p>@venueCount Venues</p>
+		</div>
+		<div>
+			<button class="btn btn-primary" @onclick="ShowAddVenue">Add Venue</button>
+		</div>
+	</div>
+
+	@if(isAddVenue) 
+	{
+		<div class="card add-venue w-100 gap-3 mb-3">
+			<EditForm Model="VenueModel" OnValidSubmit="HandleSubmit">
+				<DataAnnotationsValidator />
+				<div class="d-flex flex-row justify-content-between align-items-center">
+					<h5 class="fw-bold m-0">@(isEditMode ? "Edit Venue" : "New Venue")</h5>
+					<button type="button" class="btn-close" aria-label="Close" @onclick="HideAddVenue"></button>
+				</div>
+
+				<div class="d-flex flex-column w-100 gap-3">
+
+					<div class="input-row d-flex flex-row w-100 gap-3">
+
+						<div class="d-flex flex-column flex-grow-1">
+							@* venue Name *@
+							<label class="form-label" for="venue">Venue Name *</label>
+							<input class="form-control" type="text" @bind-value="VenueModel.Name" name="venue" placeholder="Grand Ballroom" />
+							<ValidationMessage For="@(() => VenueModel.Name)"/>
+						</div>
+
+						<div class="d-flex flex-column flex-grow-1">
+							@* Venue Capacity *@
+							<label class="form-label" for="capacity">Capacity</label>
+							<InputNumber class="form-control" @bind-value="VenueModel.Capacity" id="capacity" placeholder="e.g. 150" />
+							<ValidationMessage For="@(() => VenueModel.Capacity)" />
+						</div>
+					</div>
+
+					<div>
+						@* Address *@
+						<label class="form-label">Address</label>
+						<input class="form-control" type="text" @bind-value="VenueModel.Address" name="address" placeholder="Full address" />
+						<ValidationMessage For="@(() => VenueModel.Address)" />
+					</div>
+
+					<div>
+						@* Description *@
+						<label class="form-label" for="description">Description</label>
+						<textarea class="form-control" rows="3" id="description" @bind="VenueModel.Description" />
+					</div>
+
+					<div class="input-row d-flex flex-row w-100 gap-3">
+						@* Contact Name *@
+						<div class="d-flex flex-column flex-grow-1">
+							<label class="form-label" for="venue">Contact Name *</label>
+							<input class="form-control" type="text" @bind-value="VenueModel.ContactName" name="contactname" placeholder="e.g. John Dela Cruz" />
+							<ValidationMessage For="@(() => VenueModel.ContactName)" />
+						</div>
+						@* Contact Email *@
+						<div class="d-flex flex-column flex-grow-1">
+							<label class="form-label" for="email">Contact Email *</label>
+							<input class="form-control" type="email" @bind-value="VenueModel.Email" name="email" placeholder="e.g. user@email.com" />
+							<ValidationMessage For="@(() => VenueModel.Email)" />
+						</div>
+						@* Contact Phone *@
+						<div class="d-flex flex-column flex-grow-1">
+							<label class="form-label" for="contactphone">Contact Phone</label>
+							<input class="form-control" type="text" @bind-value="VenueModel.Phone" name="contactphone" />
+						</div>
+					</div>
+
+					<div>
+						@* Venue Status *@
+						<label class="form-label">Status</label>
+						<InputSelect class="form-select w-25" id="status" @bind-Value="VenueModel.Status">
+							@foreach (var status in Enum.GetValues<VenueStatusEnum>())
+							{
+								<option value="@status">@status.ToString()</option>
+							}
+						</InputSelect>
+						<ValidationMessage For="@(() => VenueModel.Status)"/>
+					</div>
+
+					@* Form Buttons *@
+					<div class="d-flex flex-row gap-3">
+						<button type="submit" class="btn btn-primary">@(isEditMode ? "Update Venue" : "Save Venue")</button>
+						<button type="button" class="btn btn-light" @onclick="HideAddVenue">Cancel</button>
+					</div>
+				</div>
+			</EditForm>
+		</div>
+	} 
+
+
+	<div class="w-100">
+		<div class="row row-cols-1 row-cols-md-2 g-3">
+			
+			@foreach (var item in venues)
+			{
+				<div class="col">
+					<div class="card venue-card h-100 p-3 shadow-sm">
+						<div class="d-flex justify-content-between align-content-center">
+							<div class="d-flex align-items-baseline gap-2">
+								<h5 class="fw-bold m-0 text-truncate" style="font-weight: 600;">@item.Name</h5>
+
+								<span class="badge rounded rounded-pill @(item.Status == VenueStatusEnum.Available ? "bg-success" : "bg-danger")" style="font-size: 11px;" >
+									@item.Status
+								</span>
+							</div>
+
+							<div class="d-flex align-items-center">
+								<div class="d-flex align-items-center btn btn-icon btn-link p-1" @onclick="() => EditVenue(item)">
+									<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+										<g clip-path="url(#clip0_13_30)">
+											<path d="M11.1667 5.33332H5.33334C4.89131 5.33332 4.46739 5.50891 4.15483 5.82147C3.84227 6.13403 3.66667 6.55796 3.66667 6.99999V18.6667C3.66667 19.1087 3.84227 19.5326 4.15483 19.8452C4.46739 20.1577 4.89131 20.3333 5.33334 20.3333H17C17.442 20.3333 17.866 20.1577 18.1785 19.8452C18.4911 19.5326 18.6667 19.1087 18.6667 18.6667V12.8333M17.4167 4.08332C17.7482 3.7518 18.1978 3.56555 18.6667 3.56555C19.1355 3.56555 19.5852 3.7518 19.9167 4.08332C20.2482 4.41484 20.4344 4.86448 20.4344 5.33332C20.4344 5.80216 20.2482 6.2518 19.9167 6.58332L12 14.5L8.66667 15.3333L9.50001 12L17.4167 4.08332Z" stroke="#1E1E1E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+										</g>
+										<defs>
+											<clipPath id="clip0_13_30">
+												<rect width="20" height="20" fill="white" transform="translate(2 2)" />
+											</clipPath>
+										</defs>
+									</svg>
+								</div>
+
+								<div class="d-flex align-items-center btn btn-icon btn-link p-1" style="">
+									<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+										<path d="M7 21C6.45 21 5.97917 20.8042 5.5875 20.4125C5.19583 20.0208 5 19.55 5 19V6H4V4H9V3H15V4H20V6H19V19C19 19.55 18.8042 20.0208 18.4125 20.4125C18.0208 20.8042 17.55 21 17 21H7ZM17 6H7V19H17V6ZM9 17H11V8H9V17ZM13 17H15V8H13V17Z" fill="#FF5B5B" />
+									</svg>
+								</div>
+							</div>
+						</div>
+
+						<p class="mb-1 text-muted small">@item.Address</p>
+
+						<p class="mb-2 text-muted small">Capacity: @item.Capacity</p>
+					</div>
+				</div>
+			}
+		</div>
+	</div>
+</div>
+
+@code {
+	private bool isAddVenue = false;
+	private bool isEditMode = false;
+	private int venueCount = 0;
+
+	private List<Venue> venues = new();
+
+	private Venue VenueModel { get; set; } = new Venue
+	{
+		Name = string.Empty,
+		Address = string.Empty,
+		Description = string.Empty,
+		ContactName = string.Empty,
+		Email = string.Empty,
+		Phone = string.Empty
+	};
+
+	protected override async Task OnInitializedAsync()
+	{
+		await LoadVenues();
+	}
+
+	// Load the venues and change the number of venues
+	private async Task LoadVenues()
+	{
+		venues = await Db.Venues.AsNoTracking().OrderBy(e => e.Id).Take(100).ToListAsync();
+		venueCount = venues.Count;
+	}
+
+	private void ShowAddVenue()
+	{
+		isEditMode = false;
+		ResetFormModel();
+		isAddVenue = true;
+	}
+
+	private void HideAddVenue()
+	{
+		isAddVenue = false;
+		isEditMode = false;
+		ResetFormModel();
+	}
+
+	private void ResetFormModel()
+	{
+		VenueModel = new Venue
+		{
+			Name = string.Empty,
+			Address = string.Empty,
+			Description = string.Empty,
+			ContactName = string.Empty,
+			Email = string.Empty,
+			Phone = string.Empty,
+			Status = VenueStatusEnum.Available
+		};
+	}
+
+	private async Task HandleSubmit ()
+	{
+		if(isEditMode)
+		{
+			Db.Venues.Update(VenueModel);
+		}
+		else
+		{
+			Db.Venues.Add(VenueModel);	
+		}
+		await Db.SaveChangesAsync();
+
+		Db.ChangeTracker.Clear();
+
+		ResetFormModel();
+
+		isAddVenue = false;
+		await LoadVenues();
+	}
+
+	private void EditVenue(Venue v)
+	{
+		isEditMode = true;
+
+		VenueModel = new Venue
+		{
+			Id = v.Id,
+			Name = v.Name,
+			Capacity = v.Capacity,
+			Address = v.Address,
+			Description = v.Description,
+			ContactName = v.ContactName,
+			Email = v.Email,
+			Phone = v.Phone,
+			Status = v.Status
+		};
+
+		isAddVenue = true;
+	}
+}

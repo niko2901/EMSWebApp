@@ -1,0 +1,136 @@
+﻿@page "/events/{Id:guid}"
+
+@using Microsoft.EntityFrameworkCore
+@using EMSWebApp.Models
+
+@inject EMSWebApp.Data.AppDbContext Db
+@inject NavigationManager NavManager
+
+@rendermode InteractiveServer
+
+@if (SelectedEvent == null)
+{
+	<div class="p-4 text-center">
+		<div class="spinner-border text-primary" role="status"></div>
+		<p class="mt-2">Loading event profile metadata...</p>
+	</div>
+}
+else
+{
+	<div class="d-flex flex-column w-100 p-3 border mt-2" style="max-width: 64rem;">
+		<a class="btn btn-outline-secondary border mb-3 px-3 py-1" style="width: max-content; border-radius: 8px;" href="/events">Back</a>
+
+		<div class="overflow-hidden w-100" style="height: 13rem; margin-bottom: 1.5rem; border-radius: .75rem;">
+			@if (IsImageBroken )
+			{
+				<div class="d-flex justify-content-center align-items-center w-100" style="height: 10rem; background: #5296FA; border-radius: .75rem;">
+					<svg width="56" height="57" viewBox="0 0 26 27" fill="none" xmlns="http://www.w3.org/2000/svg">
+						<rect x="1" y="2.77777" width="24" height="23" rx="3" stroke="black" stroke-opacity="0.67" stroke-width="2" stroke-miterlimit="1.52425" />
+						<line x1="2" y1="8.88889" x2="24" y2="8.88889" stroke="black" stroke-opacity="0.67" stroke-width="2" stroke-linecap="round" />
+						<line x1="7" y1="1.11111" x2="7" y2="4.44445" stroke="black" stroke-opacity="0.67" stroke-width="2" stroke-linecap="round" />
+						<path d="M19 1V4.55556" stroke="black" stroke-opacity="0.67" stroke-width="2" stroke-linecap="round" />
+					</svg>
+				</div>
+			}
+			else
+			{
+				<img src="@SelectedEvent.StorageUrl" @onerror="Handle404Error" class="h-100 w-100" alt="Alternate Text" style="object-fit: cover;" />
+			}
+		</div>
+
+		<div class="d-flex flex-row mb-4">
+			<div class="d-flex flex-column flex-grow-1">
+				<div class="d-flex flex-row gap-2">
+					<span class="badge rounded-pill @(SelectedEvent.Status == EventStatusEnum.Published ? "bg-success" : "bg-secondary")">@SelectedEvent.Status</span>
+					<span class="badge rounded-pill bg-secondary">@SelectedEvent.EventType</span>
+				</div>
+				<div>
+					<h1 class="fw-bold">@SelectedEvent.Name</h1>
+					<h6 class="text-muted">By @SelectedEvent.AppUser?.FullName</h6>
+				</div>
+			</div>
+
+			<div class="d-flex flex-row flex-shrink-0 align-items-start gap-2">
+				<button class="btn btn-outline-secondary">Preview</button>
+
+				<button class="btn btn-outline-primary">Share</button>
+
+				<button class="btn btn-primary">Mark Complete</button>
+
+				<button class="btn btn-outline-secondary">Edit</button>
+
+				<button class="btn btn-outline-danger d-flex align-items-center">
+					<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+						<path d="M7 21C6.45 21 5.97917 20.8042 5.5875 20.4125C5.19583 20.0208 5 19.55 5 19V6H4V4H9V3H15V4H20V6H19V19C19 19.55 18.8042 20.0208 18.4125 20.4125C18.0208 20.8042 17.55 21 17 21H7ZM17 6H7V19H17V6ZM9 17H11V8H9V17ZM13 17H15V8H13V17Z" fill="#FF5B5B" />
+					</svg>
+				</button>
+			</div>
+		</div>
+
+		<div class="d-flex flex-row gap-3 mb-3">
+			<div class="card p-3 flex-grow-1">
+				<h6 class="text-muted">Start</h6>
+				<p>@SelectedEvent.StartDate?.ToString("dddd, MMM dd \u2022 HH:MM tt")</p>
+			</div>
+
+			<div class="card p-3 flex-grow-1">
+				<h6 class="text-muted">End</h6>
+				<p>@SelectedEvent.EndDate?.ToString("dddd, MMM dd \u2022 HH:MM tt")</p>
+			</div>
+
+			<div class="card p-3 flex-grow-1">
+				<h6 class="text-muted">Registration Start</h6>
+				<p>@SelectedEvent.RegistrationStart?.ToString("dddd, MMM dd \u2022 HH:MM tt")</p>
+			</div>
+
+			<div class="card p-3 flex-grow-1">
+				<h6 class="text-muted">Registration End</h6>
+				<p>@SelectedEvent.RegistrationDeadline?.ToString("dddd, MMM dd \u2022 HH:MM tt")</p>
+			</div>
+		</div>
+
+		<div class="d-flex flex-row gap-3">
+			<div class="card d-flex flex-column justify-content-center align-items-center flex-grow-1 p-3">
+				<p>@SelectedEvent.Capacity</p>
+				<h6>Capacity</h6>
+			</div>
+
+			<div class="card d-flex flex-column justify-content-center align-items-center flex-grow-1 p-3">
+				<p>0</p>
+				<h6>Registered</h6>
+			</div>
+
+			<div class="card d-flex flex-column justify-content-center align-items-center flex-grow-1 p-3">
+				<h6>Location</h6>
+				<p>@SelectedEvent.Venue?.Name, @SelectedEvent.Venue?.Address</p>
+			</div>
+		</div>
+	</div>
+}
+
+@code {
+	[Parameter]
+	public Guid Id { get; set; }
+
+	private UserEvent? SelectedEvent { get; set; }
+	private bool IsImageBroken = false;
+
+	private void Handle404Error()
+	{
+		IsImageBroken = true;
+	}
+
+	protected override async Task OnParametersSetAsync()
+	{
+		SelectedEvent = await Db.UserEvents
+			.Include(e => e.AppUser)
+			.Include(e => e.Venue)
+			.FirstOrDefaultAsync(e => e.Id == Id);
+
+		// Redirect back home safely if someone enters a fake/non-existent Guid in the browser bar
+		if (SelectedEvent == null)
+		{
+			NavManager.NavigateTo("/events");
+		}
+	}
+}
