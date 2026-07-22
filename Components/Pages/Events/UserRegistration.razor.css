@@ -1,0 +1,12 @@
+﻿body, html {
+    background: rgb(248, 250, 252) !important;
+}
+
+.card {
+    border-radius: 12px;
+    background: rgb(255 255 255);
+}
+
+.ticket:last-child {
+    border-bottom: 0 !important;
+}

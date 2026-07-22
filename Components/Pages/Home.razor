@@ -2,59 +2,274 @@
 @attribute [Authorize]
 
 @using Microsoft.AspNetCore.Authorization
-@using Microsoft.AspNetCore.Components;
-@using Microsoft.AspNetCore.Components.Forms;
-@using Microsoft.AspNetCore.Components.Authorization;
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.EntityFrameworkCore
+@using EMSWebApp.Models
+@using EMSWebApp.Models.ModelEnums
+@using EMSWebApp.Data
+
+@inject AppDbContext Db
+
+@rendermode InteractiveServer
 
 <PageTitle>Dashboard</PageTitle>
 
-<div class="d-flex flex-column h-100 w-100 pt-3" style="max-width: 80rem;">
-	<AuthorizeView>
-		<h4 class="fw-bold">Welcome back, @context.User.FindFirst("FullName")?.Value</h4>
-		<p>Let's start with the summarize view of events</p>
-	</AuthorizeView>
+<div class="d-flex flex-column h-100 w-100 p-3 align-items-center">
+	@* Dashboard TopBar *@
+	<div class="d-flex w-100 align-items-center">
+		<h3 class="col fw-bold">Dashboard</h3>
 
-	<div class="main-page d-flex flex-column h-100 mt-3">
-		<div class="d-flex flex-row w-100 justify-content-evenly gap-2">
-			<a class="card card-dash flex-grow-1 text-decoration-none" href="/events">
-				<div class="card-body">
-					<p>icon here</p>
-					<p>event count</p>
-					<h5>Upcoming Events</h5>
-				</div>
-			</a>
+		<div class="d-flex align-items-center gap-2">
 
-			<a class="card card-dash flex-grow-1 text-decoration-none" href="/events">
-				<div class="card-body">
-					<p>icon here</p>
-					<p>event count</p>
-					<h5>Today' Event</h5>
-				</div>
-			</a>
+			@* shows the user's full name and role *@
+			<div class="">
+				<AuthorizeView>
+					<p class="fw-bold">@context.User.FindFirst("FullName")?.Value</p>
+					<p class="text-muted">@context.User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value</p>
+				</AuthorizeView>
+			</div>
 
-			<a class="card card-dash flex-grow-1 text-decoration-none" href="/events">
-				<div class="card-body">
-					<p>icon here</p>
-					<p>event count</p>
-					<h5>Today' Event</h5>
-				</div>
-			</a>
-
-			<a class="card card-dash flex-grow-1 text-decoration-none" href="/events">
-				<div class="card-body">
-					<p>icon here</p>
-					<p>event count</p>
-					<h5>Today' Event</h5>
-				</div>
+			@* Logout Button *@
+			<a class="btn btn-link logout-btn d-flex justify-content-center" href="/Account/Logout">
+				<svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+					<path d="M12.9999 2C10.2385 2 7.99991 4.23858 7.99991 7C7.99991 7.55228 8.44762 8 8.99991 8C9.55219 8 9.99991 7.55228 9.99991 7C9.99991 5.34315 11.3431 4 12.9999 4H16.9999C18.6568 4 19.9999 5.34315 19.9999 7V17C19.9999 18.6569 18.6568 20 16.9999 20H12.9999C11.3431 20 9.99991 18.6569 9.99991 17C9.99991 16.4477 9.55219 16 8.99991 16C8.44762 16 7.99991 16.4477 7.99991 17C7.99991 19.7614 10.2385 22 12.9999 22H16.9999C19.7613 22 21.9999 19.7614 21.9999 17V7C21.9999 4.23858 19.7613 2 16.9999 2H12.9999Z" fill="#000000" />
+					<path d="M13.9999 11C14.5522 11 14.9999 11.4477 14.9999 12C14.9999 12.5523 14.5522 13 13.9999 13V11Z" fill="#000000" />
+					<path d="M5.71783 11C5.80685 10.8902 5.89214 10.7837 5.97282 10.682C6.21831 10.3723 6.42615 10.1004 6.57291 9.90549C6.64636 9.80795 6.70468 9.72946 6.74495 9.67492L6.79152 9.61162L6.804 9.59454L6.80842 9.58848C6.80846 9.58842 6.80892 9.58778 5.99991 9L6.80842 9.58848C7.13304 9.14167 7.0345 8.51561 6.58769 8.19098C6.14091 7.86637 5.51558 7.9654 5.19094 8.41215L5.18812 8.41602L5.17788 8.43002L5.13612 8.48679C5.09918 8.53682 5.04456 8.61033 4.97516 8.7025C4.83623 8.88702 4.63874 9.14542 4.40567 9.43937C3.93443 10.0337 3.33759 10.7481 2.7928 11.2929L2.08569 12L2.7928 12.7071C3.33759 13.2519 3.93443 13.9663 4.40567 14.5606C4.63874 14.8546 4.83623 15.113 4.97516 15.2975C5.04456 15.3897 5.09918 15.4632 5.13612 15.5132L5.17788 15.57L5.18812 15.584L5.19045 15.5872C5.51509 16.0339 6.14091 16.1336 6.58769 15.809C7.0345 15.4844 7.13355 14.859 6.80892 14.4122L5.99991 15C6.80892 14.4122 6.80897 14.4123 6.80892 14.4122L6.804 14.4055L6.79152 14.3884L6.74495 14.3251C6.70468 14.2705 6.64636 14.1921 6.57291 14.0945C6.42615 13.8996 6.21831 13.6277 5.97282 13.318C5.89214 13.2163 5.80685 13.1098 5.71783 13H13.9999V11H5.71783Z" fill="#000000" />
+				</svg>
 			</a>
 		</div>
+	</div>
 
-		<div class="card stats flex-grow-1 w-100 bg-white">
+	<div class="d-flex flex-column mt-3 col-10" style="gap: 2.6rem;">
 
+		@* container for event cards and analytics *@
+		<div class="d-flex flex-row w-100 justify-content-evenly gap-3">
+			<div class="d-flex flex-column col-4 gap-3">
+
+				@* card for upcoming events button with counter *@
+				<a class="card hover rounded-4 text-decoration-none p-2" href="/events">
+					<div class="row g-0 align-items-center">
+						<div class="col-2">
+							<svg opacity="90%" height="60" width="60" viewBox="-2.4 -2.4 28.80 28.80" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="#000000">
+								<g id="SVGRepo_bgCarrier" stroke-width="0" transform="translate(0,0), scale(1)">
+									<path transform="translate(-2.4, -2.4), scale(0.8999999999999999)" d="M16,30.307891285813906C18.184755272611692,29.69756622104117,19.50754981943161,27.561811534226077,21.481656993508764,26.444424783297134C23.37958595479462,25.370156525021574,26.19567593047836,25.68668702143139,27.389171430788387,23.861377424796963C28.588033598580008,22.02786014773681,27.241255128751888,19.569379956758535,27.405337744129035,17.384858728211853C27.560681774122727,15.316679046475288,29.10627699323194,13.247120361587854,28.330909708931316,11.323502796155756C27.553959969918495,9.395959300725687,25.190588179016792,8.72826907440781,23.455172846468994,7.584849445712873C21.92831720893256,6.578844327860433,20.387730381731526,5.724407276320165,18.7143595899253,4.9874102423017845C16.760372591036255,4.12682236199267,14.8250527327269,2.3141305463909756,12.765421302263892,2.876798354436943C10.694077593227977,3.4426658233612444,9.77282055888757,5.885734847716125,8.673762104786427,7.730386920010046C7.784528139684128,9.222871027983741,7.877732970646528,11.090929327733889,6.9838121505227555,12.580610979831018C5.839214373114457,14.488035294884119,2.8579756267972094,15.387717181567396,2.745629478524748,17.60937195508018C2.6395444625341873,19.707212297608248,5.578832863205548,20.674104811818463,6.478551634158967,22.57218127670339C7.603767159027507,24.945973148815717,6.595882952712337,28.37679391321259,8.634763973324521,30.033284786504428C10.569666945950912,31.6052985933221,13.598924411391975,30.978646785302697,16,30.307891285813906" fill="#71a0fe" strokewidth="0">
+									</path>
+								</g>
+								<g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round" stroke="#CCCCCC" stroke-width="0.048"></g>
+								<g id="SVGRepo_iconCarrier">
+									<path d="M2 12C2 8.22876 2 6.34315 3.17157 5.17157C4.34315 4 6.22876 4 10 4H14C17.7712 4 19.6569 4 20.8284 5.17157C22 6.34315 22 8.22876 22 12V14C22 17.7712 22 19.6569 20.8284 20.8284C19.6569 22 17.7712 22 14 22H10C6.22876 22 4.34315 22 3.17157 20.8284C2 19.6569 2 17.7712 2 14V12Z" stroke="#000000" stroke-width="1.5"></path> 
+									<path opacity="0.5" d="M7 4V2.5" stroke="#000000" stroke-width="1.5" stroke-linecap="round"></path>
+									<path opacity="0.5" d="M17 4V2.5" stroke="#000000" stroke-width="1.5" stroke-linecap="round"></path> 
+									<path opacity="0.5" d="M2.5 9H21.5" stroke="#000000" stroke-width="1.5" stroke-linecap="round"></path> 
+									<path d="M18 17C18 17.5523 17.5523 18 17 18C16.4477 18 16 17.5523 16 17C16 16.4477 16.4477 16 17 16C17.5523 16 18 16.4477 18 17Z" fill="#000000"></path>
+									<path d="M18 13C18 13.5523 17.5523 14 17 14C16.4477 14 16 13.5523 16 13C16 12.4477 16.4477 12 17 12C17.5523 12 18 12.4477 18 13Z" fill="#000000"></path> 
+									<path d="M13 17C13 17.5523 12.5523 18 12 18C11.4477 18 11 17.5523 11 17C11 16.4477 11.4477 16 12 16C12.5523 16 13 16.4477 13 17Z" fill="#000000"></path> 
+									<path d="M13 13C13 13.5523 12.5523 14 12 14C11.4477 14 11 13.5523 11 13C11 12.4477 11.4477 12 12 12C12.5523 12 13 12.4477 13 13Z" fill="#000000"></path> 
+									<path d="M8 17C8 17.5523 7.55228 18 7 18C6.44772 18 6 17.5523 6 17C6 16.4477 6.44772 16 7 16C7.55228 16 8 16.4477 8 17Z" fill="#000000"></path>
+									<path d="M8 13C8 13.5523 7.55228 14 7 14C6.44772 14 6 13.5523 6 13C6 12.4477 6.44772 12 7 12C7.55228 12 8 12.4477 8 13Z" fill="#000000"></path>
+								</g>
+							</svg>
+						</div>
+						<div class="col-md-8">
+							<div class="card-body">
+								<h5 class="card-title text-muted">Upcoming Events</h5>
+								<p class="card-text fw-bold fs-5">@upcomingEventCount</p>
+							</div>
+						</div>
+					</div>
+				</a>
+
+				@* card for ticket sold counter *@
+				<a class="card hover rounded-4 text-decoration-none p-2" href="registrations">
+					<div class="row g-0 align-items-center">
+						<div class="col-2">
+							<svg opacity="90%" height="60" width="60" viewBox="-2.4 -2.4 28.80 28.80" fill="none" xmlns="http://www.w3.org/2000/svg">
+								<g id="SVGRepo_bgCarrier" stroke-width="0">
+									<path transform="translate(-2.4, -2.4), scale(0.8999999999999999)" d="M16,28.813245924189687C18.230848171398502,29.051496655044108,20.704151683145856,28.53831358794247,22.373791916295886,27.03973143589627C24.002323275560048,25.578046468927997,23.5435783385653,22.881226220256284,24.687545922219606,21.015756976790726C25.876950240140758,19.076193998931437,28.485254932354522,18.177845110590454,29.143721219152212,16C29.848365231615006,13.669424315233886,29.65028926337293,10.928808756991659,28.36195731099579,8.862820618785921C27.08033001551089,6.807584167352013,24.64254965478068,5.738741461966402,22.31881852075458,5.055485278245861C20.262297365471063,4.450797939110785,18.10374282805053,5.6393134124012345,16,5.227983674034476C13.184160489914493,4.677422781551458,10.53739130489067,0.8007348912850283,8.073045143857602,2.2701114398565174C5.590579661194345,3.7502917085791805,7.36137134288842,7.861376327139128,6.8214246329072274,10.700747041031715C6.474840640402602,12.523298081774008,6.068776596979623,14.246782849371005,5.462111629545689,15.999999999999998C4.511295558961655,18.747788534901886,0.932613693735733,21.34731621826884,2.238437965086556,23.945241545326997C3.5067021432649392,26.468441413929398,7.704226832269243,24.815604832262906,10.366573318839068,25.75738123248484C12.415481286739317,26.48216036252259,13.83896725670091,28.582451360448232,16,28.813245924189687" fill="#71a0fe" strokewidth="0">
+									</path>
+								</g>
+								<g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g>
+								<g id="SVGRepo_iconCarrier"> 
+									<path d="M18.91 14.6927C18.91 15.9827 19.97 17.0327 21.26 17.0327C21.26 20.7827 20.32 21.7227 16.57 21.7227H7.19C3.44 21.7227 2.5 20.7827 2.5 17.0327V16.5727C3.79 16.5727 4.85 15.5127 4.85 14.2227C4.85 12.9327 3.79 11.8727 2.5 11.8727V11.4127C2.51 7.66266 3.44 6.72266 7.19 6.72266H16.56C20.31 6.72266 21.25 7.66266 21.25 11.4127V12.3527C19.96 12.3527 18.91 13.3927 18.91 14.6927Z" stroke="#000000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path> 
+									<path opacity="0.4" d="M16.2111 6.7225H7.12109L10.0511 3.7925C12.4411 1.4025 13.6411 1.4025 16.0311 3.7925L16.6311 4.3925C16.0011 5.0225 15.8511 5.9525 16.2111 6.7225Z" stroke="#000000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path> 
+									<path opacity="0.4" d="M9.87891 6.72266L9.87891 21.7227" stroke="#000000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="5 5"></path>
+								</g>
+							</svg>
+						</div>
+						<div class="col-md-8">
+							<div class="card-body">
+								<h5 class="card-title text-muted">Tickets Sold</h5>
+								<p class="card-text fw-bold fs-5">@ticketsSold</p>
+							</div>
+						</div>
+					</div>
+				</a>
+
+				@* card for revenue (will be updated to be clickable to redirect to analytics page) *@
+				<a class="card rounded-4 text-decoration-none p-2">
+					<div class="row g-0 align-items-center">
+						<div class="col-2">
+							<svg opacity="90%" height="60" width="60" fill="#000000" viewBox="-3.2 -3.2 38.40 38.40" xmlns="http://www.w3.org/2000/svg">
+								<g id="SVGRepo_bgCarrier" stroke-width="0" transform="translate(0,0), scale(1)">
+									<path transform="translate(-3.2, -3.2), scale(1.2)" d="M16,29.848464223172734C18.704303841883323,30.498245927214832,21.964515886795045,30.37557380632009,24.07291924995299,28.56170755150497C26.171010185818112,26.75671311135233,25.96627822995094,23.51483281067439,26.515255131364725,20.80215611304611C26.94633379729883,18.67205364623444,27.14605891920006,16.59087776807412,26.933214559525304,14.42804106275045C26.711248789862864,12.172516346544946,26.801134342446066,9.637547347650111,25.253597603417973,7.981712032869664C23.7148950664264,6.335329148743085,21.082514548769154,6.673064463640873,18.96498582408692,5.9021856154196435C16.658717112076463,5.062596641876875,14.669062014785869,2.8003030512782163,12.256287866098932,3.2500873594982753C9.838002204424665,3.7008991124369373,8.663435593006312,6.39478731208052,6.9346748235227675,8.144851019475663C5.065907416546504,10.03664661909996,2.510501319079697,11.412484138586354,1.6935009283532967,13.943035970437966C0.8258090966903328,16.630597909233554,0.7042253423133993,19.950280787452517,2.3922373067536036,22.214456994708492C4.070688190323346,24.465808665007035,7.637682850066948,23.82721073141015,10.086773512791927,25.20116001637864C12.318373553389463,26.45309622551152,13.512025926326976,29.25066156203464,16,29.848464223172734" fill="#71a0fe" strokewidth="0"></path>
+								</g>
+								<g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g>
+								<g id="SVGRepo_iconCarrier"> 
+									<path d="M31,7H1A1,1,0,0,0,0,8V24a1,1,0,0,0,1,1H31a1,1,0,0,0,1-1V8A1,1,0,0,0,31,7ZM25.09,23H6.91A6,6,0,0,0,2,18.09V13.91A6,6,0,0,0,6.91,9H25.09A6,6,0,0,0,30,13.91v4.18A6,6,0,0,0,25.09,23ZM30,11.86A4,4,0,0,1,27.14,9H30ZM4.86,9A4,4,0,0,1,2,11.86V9ZM2,20.14A4,4,0,0,1,4.86,23H2ZM27.14,23A4,4,0,0,1,30,20.14V23Z"></path> 
+									<path d="M7.51.71a1,1,0,0,0-.76-.1,1,1,0,0,0-.61.46l-2,3.43a1,1,0,0,0,1.74,1L7.38,2.94l5.07,2.93a1,1,0,0,0,1-1.74Z"></path> 
+									<path d="M24.49,31.29a1,1,0,0,0,.5.14.78.78,0,0,0,.26,0,1,1,0,0,0,.61-.46l2-3.43a1,1,0,1,0-1.74-1l-1.48,2.56-5.07-2.93a1,1,0,0,0-1,1.74Z"></path> 
+									<path d="M16,10a6,6,0,1,0,6,6A6,6,0,0,0,16,10Zm0,10a4,4,0,1,1,4-4A4,4,0,0,1,16,20Z"></path> 
+								</g>
+							</svg>
+						</div>
+						<div class="col-md-8">
+							<div class="card-body">
+								<h5 class="card-title text-muted">Revenue</h5>
+								<p class="card-text fs-5">₱<strong>@totalRevenue</strong></p>
+							</div>
+						</div>
+					</div>
+				</a>
+			</div>
+
+			@* card for analytics (will show charts | will be implemented) *@
+			<div class="card rounded-4 w-100 bg-white">
+				<div class="card-body">
+					<h5 class="card-title fw-bold">Analytics</h5>
+					<p class="card-text text-muted">to be implemented</p>
+				</div>
+			</div>
+		</div>
+
+		<div class="d-flex gap-3 w-100">
+			<div class="card rounded-4 w-100">
+				<div class="card-body">
+					<h5>Popular Events</h5>
+				</div>
+			</div>
+
+			<div class="card rounded-4 w-100">
+				<div class="card-body">
+					<div class="d-flex align-items-center justify-content-between">
+						<h5>Upcoming Event</h5>
+
+						<div>
+							@* pagination button will be placed here *@
+							<button class="btn btn-link" disabled="@(currentIndex == 0 || upcomingEventCount == 0)" @onclick="PrevEvent">
+								<i class="bi bi-chevron-left"></i>
+							</button>
+
+							<button class="btn btn-link" disabled="@(currentIndex >= upcomingEventCount - 1 || upcomingEventCount == 0)" @onclick="NextEvent">
+								<i class="bi bi-chevron-right"></i>
+							</button>
+						</div>
+					</div>
+					 
+					<div class="row g-3">
+						@* event banner container *@
+						<div class="col-12 col-md-5">
+							<div class="ratio ratio-1x1 overflow-hidden rounded-3">
+								@if (!string.IsNullOrEmpty(currentEvent?.StorageUrl))
+								{
+									<img src="@currentEvent.StorageUrl" class="w-100 h-100 object-fit-cover" alt="@currentEvent.Name" />
+								}
+								else
+								{
+									<div class="d-flex align-items-center justify-content-center bg-light text-muted w-100 h-100">
+										<span>No Image</span>
+									</div>
+								}
+							</div>
+						</div>
+
+						@* container for the event details *@
+						<div class="col-12 col-md-7 d-flex flex-column">
+							<h4 class="fw-bold mb-3 text-dark">@currentEvent?.Name</h4>
+
+							@* event date *@
+							<div class="d-flex align-items-center gap-2 mb-2 text-muted" style="font-size: 0.9rem;">
+								<i class="bi bi-calendar-event text-primary"></i>
+								<span>@currentEvent?.StartDate?.ToString("MMMM dd, yyyy")</span>
+							</div>
+
+							@* event time *@
+							<div class="d-flex align-items-center gap-2 mb-2 text-muted" style="font-size: 0.9rem;">
+								<i class="bi bi-clock text-primary"></i>
+								<span>
+									@currentEvent?.StartDate?.ToString("h:mm tt") - @currentEvent?.EndDate?.ToString("h:mm tt")
+								</span>
+							</div>
+
+							@* event venue *@
+							<div class="d-flex align-items-center gap-2 mb-3 text-muted" style="font-size: 0.9rem;">
+								<i class="bi bi-geo-alt text-primary"></i>
+								<span>@(currentEvent?.Venue?.Name ?? "Online Event")</span>
+							</div>
+
+							@* event details *@
+							<p class="text-secondary small mb-0 lh-sm text-truncate-3">
+								@currentEvent?.Description
+							</p>
+						</div>
+					</div>
+				</div>
+			</div>
 		</div>
 	</div>
 </div>
 
 @code {
+	private int ticketsSold;
+	private int upcomingEventCount;
+	private int totalRevenue;
+	private int currentIndex = 0;
 
+	private UserEvent? currentEvent;
+
+	protected override async Task OnInitializedAsync()
+	{
+		await LoadTotalCount();
+		await LoadCurrentEvent();
+	}
+
+	private async Task LoadTotalCount()
+	{
+		upcomingEventCount = await Db.UserEvents.Where(e => e.StartDate >= DateTime.UtcNow && e.Status == EventStatusEnum.Published).CountAsync();
+		ticketsSold = await Db.Registered.CountAsync();
+		totalRevenue = (int)await Db.Registered.Where(r => r.TicketType != null).SumAsync(r => r.TicketType!.Price);
+	}
+
+	private async Task LoadCurrentEvent()
+	{
+		if (upcomingEventCount == 0) return;
+
+		currentEvent = await Db.UserEvents
+			.Include(e => e.AppUser)
+			.Include(e => e.Venue)
+			.Where(e => e.StartDate >= DateTime.UtcNow && e.Status == EventStatusEnum.Published)
+			.OrderBy(e => e.StartDate)
+			.Skip(currentIndex)
+			.Take(1)
+			.FirstOrDefaultAsync();
+	}
+
+	private async Task NextEvent()
+	{
+		if( currentIndex < upcomingEventCount - 1)
+		{
+			currentIndex++;
+			await LoadCurrentEvent();
+		}
+	}
+
+	private async Task PrevEvent()
+	{
+		if(currentIndex > 0)
+		{
+			currentIndex--;
+			await LoadCurrentEvent();
+		}
+	}
 }

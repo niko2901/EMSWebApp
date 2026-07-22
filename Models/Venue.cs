@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using EMSWebApp.Models.ModelEnums;
 
 namespace EMSWebApp.Models
 {

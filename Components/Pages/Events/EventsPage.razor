@@ -2,6 +2,7 @@
 @attribute [Authorize(Roles = "Admin")]
 
 @using EMSWebApp.Models
+@using EMSWebApp.Models.ModelEnums
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Components;
 @using Microsoft.AspNetCore.Components.Forms;
@@ -22,16 +23,18 @@
 				<p>@eventCount events</p>
 			</div>
 			<div>
-				<a class="btn btn-primary" href="/events/new">New Event</a>
+				<a class="btn btn-primary" href="/events/new" style="border-radius: .55rem;">New Event</a>
 			</div>
 		</div>
-		<div class="d-flex flex-row gap-3">
-			<input class="form-control" placeholder="Search events..." />
-			<select class="form-select">
-				<option value="all">All Status</option>
-				<option value="draft">Draft</option>
-				<option value="published">Published</option>
-				<option value="cancelled">Cancelled</option>
+		<div class="d-flex flex-row gap-2">
+			<input class="form-control flex-grow-1" placeholder="Search events..." style="border-radius: .45rem;" />
+
+			<select @onchange="FilterChange" class="form-select" style="border-radius: .45rem; width:14rem;">
+				<option value="" selected>All Status</option>
+				@foreach (var items in Enum.GetValues<EventStatusEnum>())
+				{
+					<option value="@items">@items</option>
+				}
 			</select>
 		</div>
 	</div>
@@ -39,11 +42,11 @@
 	@* show event made *@
 	<div class="w-100">
 		<div class="row row-cols-1 row-cols-md-3 g-3">
-			@foreach (var ev in userEvents)
+			@foreach (var ev in filterEvents)
 			{
 				<a class="col text-black text-decoration-none" style="cursor: pointer" href="/events/@ev.Id">
 
-					<div class="hover-card card p-0 overflow-hidden" style="border-radius: 10px;">
+					<div class="hover-card border-0 card p-0 overflow-hidden" style="border-radius: 10px;">
 						<div class="overflow-hidden" style="height: 10rem;">
 							@if (ev.StorageUrl != "")
 							{
@@ -63,16 +66,16 @@
 						</div>
 						
 						<div class="card-body p-3">
-							<div class="d-flex flex-row justify-content-between">
+							<div class="d-flex flex-row justify-content-between align-items-baseline">
 								<h5>@ev.Name</h5>
-								<span class="badge bg-success">@ev.Status</span>
+								<span class="badge rounded-pill @(ev.Status == EventStatusEnum.Published ? "bg-success" : "bg-secondary")">@ev.Status</span>
 							</div>
 
-							<p>by @ev.AppUser?.FullName</p>
+							<p class="text-muted" style="font-size: .85rem;">by @ev.AppUser?.FullName</p>
 
-							<p>@ev.StartDate?.ToString("dddd, MMM dd")</p>
+							<p class="text-muted" style="font-size: .85rem;">@ev.StartDate?.ToString("dddd, MMM dd")</p>
 
-							<p>Capacity: @ev.Capacity</p>
+							<p class="text-muted" style="font-size: .85rem;">Capacity: @ev.Capacity</p>
 						</div>
 					</div>
 				</a>
@@ -85,6 +88,8 @@
 @code 
 {
 	private List<UserEvent> userEvents = new();
+	private List<UserEvent> filterEvents = new();
+	private EventStatusEnum? status;
 	private int eventCount;
 
 	protected override async Task OnInitializedAsync()
@@ -96,9 +101,42 @@
 	private async Task LoadUserEvents()
 	{
 		userEvents = await Db.UserEvents
-							 .Include(e => e.AppUser)
-							 .Include(e => e.Venue)
-							 .Take(100)
-							 .ToListAsync();
+								.Include(e => e.AppUser)
+								.Include(e => e.Venue)
+								.Take(100)
+								.ToListAsync();
+
+		filterEvents = userEvents;
+	}
+
+	private async Task ApplyFilter()
+	{
+		if (status == null)
+		{
+			// "All Status" is selected: return all events
+			filterEvents = userEvents.ToList();
+		}
+		else
+		{
+			// Specific status selected: filter by enum value
+			filterEvents = userEvents.Where(e => e.Status == status.Value).ToList();
+		}
+		StateHasChanged();
+	}
+
+	private async Task FilterChange(ChangeEventArgs e)
+	{
+		var rawValue = e.Value?.ToString();
+
+		if (string.IsNullOrEmpty(rawValue))
+		{
+			status = null; // All Status selected
+		}
+		else if (Enum.TryParse<EventStatusEnum>(rawValue, out var parsedStatus))
+		{
+			status = parsedStatus;
+		}
+
+		await ApplyFilter();
 	}
 }

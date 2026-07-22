@@ -98,6 +98,126 @@ namespace EMSWebApp.Migrations
                     b.ToTable("AspNetUsers", (string)null);
                 });
 
+            modelBuilder.Entity("EMSWebApp.Models.RegisterStatus", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("RegisterStatus");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Name = "Pending"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Name = "Confirmed"
+                        },
+                        new
+                        {
+                            Id = 3,
+                            Name = "Cancelled"
+                        },
+                        new
+                        {
+                            Id = 4,
+                            Name = "Checked-in"
+                        });
+                });
+
+            modelBuilder.Entity("EMSWebApp.Models.Registered", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<string>("Phone")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<DateTime>("RegisterDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("StatusId")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("TicketTypeId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EventId");
+
+                    b.HasIndex("StatusId");
+
+                    b.HasIndex("TicketTypeId");
+
+                    b.ToTable("Registered");
+                });
+
+            modelBuilder.Entity("EMSWebApp.Models.TicketType", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Availability")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsFree")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("Price")
+                        .IsRequired()
+                        .HasColumnType("int");
+
+                    b.Property<int?>("Quantity")
+                        .IsRequired()
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EventId");
+
+                    b.ToTable("TicketType");
+                });
+
             modelBuilder.Entity("EMSWebApp.Models.UserEvent", b =>
                 {
                     b.Property<Guid>("Id")
@@ -119,7 +239,8 @@ namespace EMSWebApp.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
 
-                    b.Property<DateTime>("EndDate")
+                    b.Property<DateTime?>("EndDate")
+                        .IsRequired()
                         .HasColumnType("datetime2");
 
                     b.Property<int>("EventType")
@@ -135,13 +256,14 @@ namespace EMSWebApp.Migrations
                         .HasMaxLength(150)
                         .HasColumnType("nvarchar(150)");
 
-                    b.Property<DateTime>("RegistrationDeadline")
+                    b.Property<DateTime?>("RegistrationDeadline")
                         .HasColumnType("datetime2");
 
-                    b.Property<DateTime>("RegistrationStart")
+                    b.Property<DateTime?>("RegistrationStart")
                         .HasColumnType("datetime2");
 
-                    b.Property<DateTime>("StartDate")
+                    b.Property<DateTime?>("StartDate")
+                        .IsRequired()
                         .HasColumnType("datetime2");
 
                     b.Property<int>("Status")
@@ -152,7 +274,8 @@ namespace EMSWebApp.Migrations
                         .HasMaxLength(2048)
                         .HasColumnType("nvarchar(2048)");
 
-                    b.Property<Guid>("VenueId")
+                    b.Property<Guid?>("VenueId")
+                        .IsRequired()
                         .HasColumnType("uniqueidentifier");
 
                     b.HasKey("Id");
@@ -339,6 +462,44 @@ namespace EMSWebApp.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
+            modelBuilder.Entity("EMSWebApp.Models.Registered", b =>
+                {
+                    b.HasOne("EMSWebApp.Models.UserEvent", "UserEvent")
+                        .WithMany("Registrations")
+                        .HasForeignKey("EventId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("EMSWebApp.Models.RegisterStatus", "RegisterStatus")
+                        .WithMany()
+                        .HasForeignKey("StatusId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("EMSWebApp.Models.TicketType", "TicketType")
+                        .WithMany("Registrations")
+                        .HasForeignKey("TicketTypeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("RegisterStatus");
+
+                    b.Navigation("TicketType");
+
+                    b.Navigation("UserEvent");
+                });
+
+            modelBuilder.Entity("EMSWebApp.Models.TicketType", b =>
+                {
+                    b.HasOne("EMSWebApp.Models.UserEvent", "UserEvent")
+                        .WithMany("TicketTypes")
+                        .HasForeignKey("EventId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("UserEvent");
+                });
+
             modelBuilder.Entity("EMSWebApp.Models.UserEvent", b =>
                 {
                     b.HasOne("EMSWebApp.Models.AppUser", "AppUser")
@@ -407,6 +568,18 @@ namespace EMSWebApp.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("EMSWebApp.Models.TicketType", b =>
+                {
+                    b.Navigation("Registrations");
+                });
+
+            modelBuilder.Entity("EMSWebApp.Models.UserEvent", b =>
+                {
+                    b.Navigation("Registrations");
+
+                    b.Navigation("TicketTypes");
                 });
 #pragma warning restore 612, 618
         }

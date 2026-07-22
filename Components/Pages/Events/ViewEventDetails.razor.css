@@ -1,0 +1,63 @@
+﻿.card {
+    border-radius: 12px;
+    background: rgb(255 255 255);
+}
+
+.tab-btn {
+    background: none;
+    border: none;
+    outline: none;
+    padding: 0.75rem 1.25rem;
+    font-weight: 500;
+    font-size: 0.95rem;
+    cursor: pointer;
+    position: relative;
+    transition: color 0.2s ease, border-color 0.2s ease;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px; /* Aligns perfectly with the border-bottom of the wrapper */
+}
+
+    .tab-btn:hover {
+        color: #4f46e5 !important; /* Elegant Indigo/Purple hover transition */
+    }
+
+/* Style for the active tab (Purple text + bottom border line) */
+.tab-active {
+    color: #4f46e5 !important; /* Purple active text */
+    border-bottom: 3px solid #4f46e5 !important; /* Thick bottom highlight bar */
+    font-weight: 600;
+}
+
+.btn-primary {
+    background-color: #4f46e5 !important;
+}
+
+th {
+    border: none;
+}
+
+td {
+    border: none;
+}
+
+tr:last-child {
+    border: none !important;
+}
+
+.edit {
+    border-radius: .4rem;
+    display: flex;
+    justify-content: center;
+    align-content: center;
+    padding: 3px;
+    cursor: pointer;
+}
+
+    .edit>svg {
+        opacity: 80%;
+    }
+
+    .edit:hover {
+        background: #e5e4e4;
+        transition: ease-in-out .2s;
+    }

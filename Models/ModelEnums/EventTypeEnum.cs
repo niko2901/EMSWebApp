@@ -1,4 +1,4 @@
-﻿namespace EMSWebApp.Models
+﻿namespace EMSWebApp.Models.ModelEnums
 {
     public enum EventTypeEnum
     {

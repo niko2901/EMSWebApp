@@ -1,0 +1,224 @@
+﻿@page "/events/{Id:guid}/preview"
+@layout Layout.EmptyLayout
+
+@using Microsoft.EntityFrameworkCore
+@using EMSWebApp.Models
+@using EMSWebApp.Models.ModelEnums
+@using EMSWebApp.Services
+
+@inject EMSWebApp.Data.AppDbContext Db
+@inject EventNotificationService NotificationService
+@inject NavigationManager NavManager
+
+@rendermode InteractiveServer
+
+<div class="w-100 overflow-hidden" style="height: 20rem;">
+	<img src="@SelectedEvent?.StorageUrl" class="h-100 w-100" style="object-fit: cover;"/>
+</div>
+
+
+
+<div class="d-flex justify-content-center" style="background: rgb(248, 250, 252);">
+	<div class="d-flex flex-column gap-4" style="width: 48rem; padding: 2rem 1rem 2rem 1rem; min-height: 100%;">
+
+		@* condition for checking if the event is still available *@
+		@if (SelectedEvent?.Status != EventStatusEnum.Published)
+		{
+			<div class="card p-4 gap-3 ">
+				<h3>Registration for this Event is Now Closed</h3>
+				<p>
+					The sign-up deadline for this event passed on <strong>@SelectedEvent?.RegistrationDeadline</strong>.<br />
+					We are busy finalizing details and materials for our attendees and can no longer accept new registrations.
+				</p>
+			</div>
+		}
+		else
+		{
+			<div class="d-flex gap-2">
+				<span class="badge rounded-pill bg-success">@SelectedEvent?.Status</span>
+				<span class="badge rounded-pill bg-secondary">@SelectedEvent?.EventType</span>
+			</div>
+
+			<div>
+				<h1 class="fw-bold">@SelectedEvent?.Name</h1>
+				<p class="text-muted">Organized by @SelectedEvent?.AppUser?.FullName</p>
+			</div>
+
+			<div class="d-flex flex-column gap-4 @(isSuccess ? "d-none" : "")">
+				<div class="d-flex flex-row gap-3">
+					<div class="card p-3 flex-grow-1">
+						<h6 class="text-muted" style="font-weight: 400;">Start</h6>
+						<p style="font-weight: 400; font-size: 16px;">@SelectedEvent?.StartDate?.ToString("dddd, MMM dd \u2022 HH:MM tt")</p>
+					</div>
+
+					<div class="card p-3 flex-grow-1">
+						<h6 class="text-muted" style="font-weight: 400;">End</h6>
+						<p style="font-weight: 400; font-size: 16px;">@SelectedEvent?.EndDate?.ToString("dddd, MMM dd \u2022 HH:MM tt")</p>
+					</div>
+
+					<div class="card p-3 flex-grow-1">
+						<h6 class="text-muted" style="font-weight: 400;">Location</h6>
+						<p style="font-weight: 400; font-size: 16px;">@SelectedEvent?.Venue?.Name, @SelectedEvent?.Venue?.Address</p>
+					</div>
+				</div>
+
+				<h6 class="fw-normal text-muted">Capacity: <strong class="text-black">@SelectedEvent?.Capacity</strong> Attendees</h6>
+
+				@if (SelectedEvent?.Description != "")
+				{
+					<div class="card p-4">
+						<h6 class="mb-1">About this event</h6>
+						<p class="text-muted">@SelectedEvent?.Description</p>
+					</div>
+				}
+
+				@if (AvailableTickets.Count != 0)
+				{
+					<div class="card p-4">
+						<h6 class="mb-1">Tickets</h6>
+
+						@foreach (var item in AvailableTickets)
+						{
+							var ticketRemaining = item.Quantity - item.Registrations.Count;
+							<div class="ticket d-flex flex-row justify-content-between border-bottom py-3">
+								<div>
+									<h6>@item.Name</h6>
+									<p class="text-muted" style="font-size: .8rem;">@item.Description</p>
+									<p class="text-muted" style="font-size: .8rem;">@ticketRemaining remaining</p>
+								</div>
+								<div class="align-self-center">
+									<h4>@(item.IsFree == true ? "Free" : $"₱{item.Price}")</h4>
+								</div>
+							</div>
+						}
+					</div>
+				}
+
+				<div class="card p-4 gap-4">
+					<h6>Register for this event</h6>
+					<EditForm Model="RegisterModel" OnValidSubmit="HandleSubmit">
+						<DataAnnotationsValidator />
+
+						<div class="alert-danger">
+							@errMessage
+						</div>
+
+						<div class="d-flex flex-column gap-3">
+							@if (AvailableTickets.Count != 0)
+							{
+								<div>
+									<label class="form-label">Ticket Type</label>
+									<InputSelect class="form-select" @bind-Value="RegisterModel.TicketTypeId">
+										<option value="@Guid.Empty" selected>- Select Ticket Type -</option>
+										@foreach (var item in AvailableTickets)
+										{
+											<option value="@item.Id">@item.Name</option>
+										}
+									</InputSelect>
+									<ValidationMessage class="alert alert-danger px-2 py-1 my-1 rounded" For="@(() => RegisterModel.TicketTypeId)" />
+									<div class="alert alert-danger px-2 py-1 my-1 rounded @(string.IsNullOrEmpty(selectErr) ? "d-none" : "")">@selectErr</div>
+								</div>
+							}
+
+							<div>
+								<label class="form-label" for="name">Full Name *</label>
+								<InputText class="form-control" @bind-Value="RegisterModel.FullName" id="name" placeholder="John Dela Cruz" />
+							</div>
+
+							<div>
+								<label class="form-label" for="email">Email *</label>
+								<InputText type="email" class="form-control" @bind-Value="RegisterModel.Email" id="email" placeholder="email@example.com" />
+							</div>
+
+							<div>
+								<label class="form-label" for="phone">Phone</label>
+								<InputText class="form-control" @bind-Value="RegisterModel.Phone" id="phone" placeholder="+63 9XX XXX XXXX" maxlength="11" />
+							</div>
+
+							<button type="submit" class="btn btn-primary py-2 fw-bold" style="border-radius: .75rem;">Register Now</button>
+						</div>
+					</EditForm>
+				</div>
+			</div>
+
+			@* show after registration to verify using email. *@
+			@if (isSuccess)
+			{
+				<div class="card p-4 gap-3 ">
+					<h3>🎉 You're almost in!</h3>
+					<p>
+						We've sent a verification link to @userEmail <br />
+						Please check your inbox and click the link to confirm your attendance and secure your ticket.<br /><br />
+						Didn't get the email? Check your spam folder or <a class="btn-link" style="cursor: pointer;">[Resend Verification Email]</a>.
+					</p>
+				</div>
+			}
+		}
+	</div>
+</div>
+
+@code {
+	[Parameter]
+	public Guid Id { get; set; }
+	private bool isSuccess { get; set; } = false;
+	private string userEmail { get; set; } = string.Empty;
+
+	private string errMessage { get; set; } = string.Empty;
+	private string selectErr { get; set; } = string.Empty;
+
+	private UserEvent? SelectedEvent { get; set; }
+	private List<TicketType> AvailableTickets => SelectedEvent?.TicketTypes?
+																.Where(e => e.Availability == Models.ModelEnums.AvailabilityTypeEnum.Active)
+																.ToList() ?? new();
+
+	private Registered RegisterModel { get; set; } = new Registered
+	{
+		FullName = string.Empty,
+		Email = string.Empty,
+		Phone = string.Empty,
+		StatusId = 1,
+		RegisterDate = DateTime.UtcNow
+	};
+
+	protected override async Task OnParametersSetAsync()
+	{
+		SelectedEvent = await Db.UserEvents
+			.Include(e => e.Venue)
+			.Include(e => e.AppUser)
+			.Include(e => e.TicketTypes)
+			.FirstOrDefaultAsync(e => e.Id == Id);
+
+		if (SelectedEvent == null)
+		{
+			NavManager.NavigateTo("/events");
+		}
+	}
+
+	public async Task HandleSubmit()
+	{
+		RegisterModel.EventId = Id;
+		userEmail = RegisterModel.Email;
+
+		if (RegisterModel.TicketTypeId == Guid.Empty)
+		{
+			selectErr = "Ticket Type is required.";
+			return;
+		}
+
+		try
+		{
+			Db.Registered.Add(RegisterModel);
+			var res = await Db.SaveChangesAsync();
+
+			if(res > 0)
+			{
+				isSuccess = true;
+				NotificationService.NotifyRegistrationChange(RegisterModel.EventId);
+			}
+		}
+		catch (Exception ex)
+		{
+			errMessage = ex.Message;
+		}
+	}
+}

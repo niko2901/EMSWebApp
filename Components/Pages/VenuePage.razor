@@ -1,14 +1,16 @@
 ﻿@page "/venue"
 @attribute [Authorize]
 
+@using EMSWebApp.Models
+@using EMSWebApp.Models.ModelEnums
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Components
-@using Microsoft.AspNetCore.Components.Forms
 @using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.Forms
 @using Microsoft.EntityFrameworkCore
-@using EMSWebApp.Models
 
 @inject EMSWebApp.Data.AppDbContext Db
+@inject IJSRuntime JS
 
 @rendermode InteractiveServer
 
@@ -111,8 +113,22 @@
 
 
 	<div class="w-100">
+		@if (!string.IsNullOrEmpty(errorMessage))
+		{
+			<div class="alert alert-danger d-flex justify-content-between mt-3">
+				<p>@errorMessage</p>
+				<button class="btn btn-close" @onclick="() => errorMessage = null"></button>
+			</div>
+		}
+		@if (!string.IsNullOrEmpty(successMessage))
+		{
+			<div class="alert alert-success d-flex justify-content-between mt-3">
+				<p>@successMessage</p>
+				<button class="btn btn-close" @onclick="() => successMessage = null"></button>
+			</div>
+		}
+
 		<div class="row row-cols-1 row-cols-md-2 g-3">
-			
 			@foreach (var item in venues)
 			{
 				<div class="col">
@@ -140,7 +156,7 @@
 									</svg>
 								</div>
 
-								<div class="d-flex align-items-center btn btn-icon btn-link p-1" style="">
+								<div class="d-flex align-items-center btn btn-icon btn-link p-1" @onclick="() => OnDeleteConfirm(item)">
 									<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
 										<path d="M7 21C6.45 21 5.97917 20.8042 5.5875 20.4125C5.19583 20.0208 5 19.55 5 19V6H4V4H9V3H15V4H20V6H19V19C19 19.55 18.8042 20.0208 18.4125 20.4125C18.0208 20.8042 17.55 21 17 21H7ZM17 6H7V19H17V6ZM9 17H11V8H9V17ZM13 17H15V8H13V17Z" fill="#FF5B5B" />
 									</svg>
@@ -163,6 +179,9 @@
 	private bool isEditMode = false;
 	private int venueCount = 0;
 
+	private string? errorMessage;
+	private string successMessage = string.Empty;
+
 	private List<Venue> venues = new();
 
 	private Venue VenueModel { get; set; } = new Venue
@@ -183,7 +202,11 @@
 	// Load the venues and change the number of venues
 	private async Task LoadVenues()
 	{
-		venues = await Db.Venues.AsNoTracking().OrderBy(e => e.Id).Take(100).ToListAsync();
+		venues = await Db.Venues
+						 .AsNoTracking()
+						 .OrderBy(e => e.Id)
+						 .Take(100)
+						 .ToListAsync();
 		venueCount = venues.Count;
 	}
 
@@ -253,5 +276,50 @@
 		};
 
 		isAddVenue = true;
+	}
+
+	private async Task DeleteVenue (Guid venueId)
+	{
+		errorMessage = string.Empty;
+		successMessage = string.Empty;
+
+		try
+		{
+			var venue = await Db.Venues.FindAsync(venueId);
+			if (venue == null)
+			{
+				errorMessage = "Venue not found.";
+				return;
+			}
+
+			Db.Venues.Remove(venue);
+			int res = await Db.SaveChangesAsync();
+
+			if (res > 0)
+			{
+				successMessage = "Venue deleted successfully!";
+
+				await LoadVenues();
+			}
+		}
+		catch (DbUpdateException ex)
+		{
+			errorMessage = "Venue cannot be deleted because it is currently linked to active events. " +
+									"Please reassign or delete those events first."; 
+		}
+		catch (Exception ex)
+		{
+			errorMessage = $"An unexpected error occured: {ex.Message}";
+		}
+	}
+
+	private async Task OnDeleteConfirm (Venue venue)
+	{
+		bool confirmed = await JS.InvokeAsync<bool>("confirm", $"Are you sure you want to delete the venue '{venue.Name}' ? ");
+
+		if (confirmed)
+		{
+			await DeleteVenue(venue.Id);
+		}
 	}
 }

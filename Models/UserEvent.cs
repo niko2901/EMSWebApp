@@ -1,5 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using EMSWebApp.Models.ModelEnums;
 
 namespace EMSWebApp.Models
 {
@@ -51,5 +52,9 @@ namespace EMSWebApp.Models
         public DateTime? RegistrationStart { get; set; }
 
         public DateTime? RegistrationDeadline { get; set; }
+
+        public ICollection<Registered> Registrations { get; set; } = new List<Registered>();
+
+        public ICollection<TicketType> TicketTypes { get; set; } = new List<TicketType>();
     }
 }

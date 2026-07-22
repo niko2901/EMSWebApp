@@ -1,10 +1,20 @@
 ﻿@page "/events/{Id:guid}"
+@attribute [Authorize]
 
 @using Microsoft.EntityFrameworkCore
+@using EMSWebApp.Models.ModelEnums
 @using EMSWebApp.Models
+@using EMSWebApp.Services
+@using Microsoft.AspNetCore.Authentication
+@using Microsoft.AspNetCore.Authorization
 
 @inject EMSWebApp.Data.AppDbContext Db
+@inject EventNotificationService NotificationService
 @inject NavigationManager NavManager
+@inject IWebHostEnvironment Environment
+@inject IJSRuntime JS
+
+@implements IDisposable
 
 @rendermode InteractiveServer
 
@@ -17,11 +27,19 @@
 }
 else
 {
-	<div class="d-flex flex-column w-100 p-3 border mt-2" style="max-width: 64rem;">
+	<div class="d-flex flex-column w-100 p-3 mt-2" style="max-width: 64rem;">
 		<a class="btn btn-outline-secondary border mb-3 px-3 py-1" style="width: max-content; border-radius: 8px;" href="/events">Back</a>
 
+		@if (!string.IsNullOrEmpty(errMsg))
+		{
+			<div class="alert alert-danger d-flex justify-content-between">
+				<p>@errMsg</p>
+				<button class="btn btn-close" @onclick="() => errMsg = null"></button>
+			</div>
+		}
+
 		<div class="overflow-hidden w-100" style="height: 13rem; margin-bottom: 1.5rem; border-radius: .75rem;">
-			@if (IsImageBroken )
+			@if (IsImageBroken)
 			{
 				<div class="d-flex justify-content-center align-items-center w-100" style="height: 10rem; background: #5296FA; border-radius: .75rem;">
 					<svg width="56" height="57" viewBox="0 0 26 27" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -39,6 +57,7 @@ else
 		</div>
 
 		<div class="d-flex flex-row mb-4">
+			@* Event Status *@
 			<div class="d-flex flex-column flex-grow-1">
 				<div class="d-flex flex-row gap-2">
 					<span class="badge rounded-pill @(SelectedEvent.Status == EventStatusEnum.Published ? "bg-success" : "bg-secondary")">@SelectedEvent.Status</span>
@@ -50,16 +69,17 @@ else
 				</div>
 			</div>
 
+			@* Button FABs *@
 			<div class="d-flex flex-row flex-shrink-0 align-items-start gap-2">
-				<button class="btn btn-outline-secondary">Preview</button>
+				<a class="btn btn-outline-secondary" href="/events/@Id/preview" target="_blank">Preview</a>
 
 				<button class="btn btn-outline-primary">Share</button>
 
-				<button class="btn btn-primary">Mark Complete</button>
+				<button class="btn btn-primary" @onclick="MarkComplete">Mark Complete</button>
 
-				<button class="btn btn-outline-secondary">Edit</button>
+				<a class="btn btn-outline-secondary" href="/events/@Id/edit">Edit</a>
 
-				<button class="btn btn-outline-danger d-flex align-items-center">
+				<button class="btn btn-outline-danger d-flex align-items-center" @onclick="() => DeleteEvent(SelectedEvent.Id)">
 					<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
 						<path d="M7 21C6.45 21 5.97917 20.8042 5.5875 20.4125C5.19583 20.0208 5 19.55 5 19V6H4V4H9V3H15V4H20V6H19V19C19 19.55 18.8042 20.0208 18.4125 20.4125C18.0208 20.8042 17.55 21 17 21H7ZM17 6H7V19H17V6ZM9 17H11V8H9V17ZM13 17H15V8H13V17Z" fill="#FF5B5B" />
 					</svg>
@@ -68,42 +88,272 @@ else
 		</div>
 
 		<div class="d-flex flex-row gap-3 mb-3">
-			<div class="card p-3 flex-grow-1">
-				<h6 class="text-muted">Start</h6>
-				<p>@SelectedEvent.StartDate?.ToString("dddd, MMM dd \u2022 HH:MM tt")</p>
+			@* Event Registration Date*@
+			<div class="card p-3 flex-grow-1" style="border-radius: .75rem;">
+				<h6 class="text-muted" style="font-weight: 400;">Registration Start</h6>
+				<p style="font-weight: 400; font-size: 16px;">@SelectedEvent.RegistrationStart?.ToString("dddd, MMM dd \u2022 h:mm tt")</p>
+				<hr class="my-2"/>
+				<h6 class="text-muted" style="font-weight: 400;">End</h6>
+				<p style="font-weight: 400; font-size: 16px;">@SelectedEvent.RegistrationDeadline?.ToString("dddd, MMM dd \u2022 h:mm tt")</p>
 			</div>
 
-			<div class="card p-3 flex-grow-1">
-				<h6 class="text-muted">End</h6>
-				<p>@SelectedEvent.EndDate?.ToString("dddd, MMM dd \u2022 HH:MM tt")</p>
+			@* Event Start Date*@
+			<div class="card p-3 flex-grow-1" style="border-radius: .75rem;">
+				<h6 class="text-muted" style="font-weight: 400;">Event Start</h6>
+				<p style="font-weight: 400; font-size: 16px;">@SelectedEvent.StartDate?.ToString("dddd, MMM dd \u2022 h:mm tt")</p>
+				<hr class="my-2" />
+				<h6 class="text-muted" style="font-weight: 400;">End</h6>
+				<p style="font-weight: 400; font-size: 16px;">@SelectedEvent.EndDate?.ToString("dddd, MMM dd \u2022 h:mm tt")</p>
 			</div>
 
-			<div class="card p-3 flex-grow-1">
-				<h6 class="text-muted">Registration Start</h6>
-				<p>@SelectedEvent.RegistrationStart?.ToString("dddd, MMM dd \u2022 HH:MM tt")</p>
-			</div>
-
-			<div class="card p-3 flex-grow-1">
-				<h6 class="text-muted">Registration End</h6>
-				<p>@SelectedEvent.RegistrationDeadline?.ToString("dddd, MMM dd \u2022 HH:MM tt")</p>
+			<div class="card p-3 flex-grow-1 justify-content-center" style="border-radius: .75rem;">
+				<h6 class="text-muted" style="font-weight: 400;">Event Duration</h6>
+				<p style="font-weight: 400; font-size: 16px;">@(eventDurationDays == 0 ? $"{eventDurationHours}-Hour event" : $"{eventDurationDays}-Day event")</p>
+				<hr class="my-2"/>
+				<h6 class="text-muted" style="font-weight: 400;">Location</h6>
+				<p style="font-weight: 400; font-size: 16px;">@SelectedEvent.Venue?.Name, @SelectedEvent.Venue?.Address</p>
 			</div>
 		</div>
 
-		<div class="d-flex flex-row gap-3">
-			<div class="card d-flex flex-column justify-content-center align-items-center flex-grow-1 p-3">
-				<p>@SelectedEvent.Capacity</p>
-				<h6>Capacity</h6>
+		<div class="d-flex flex-row gap-3 mb-3">
+			<div class="card d-flex flex-column justify-content-center align-items-center flex-grow-1 p-3" style="border-radius: .75rem;">
+
+				<strong style="font-size: 1.5em;">
+					@SelectedEvent.Capacity
+				</strong>
+
+				<h6 class="text-muted" style="font-size: 0.8em;">
+					Capacity
+				</h6>
 			</div>
 
-			<div class="card d-flex flex-column justify-content-center align-items-center flex-grow-1 p-3">
-				<p>0</p>
-				<h6>Registered</h6>
+			<div class="card d-flex flex-column justify-content-center align-items-center flex-grow-1 p-3" style="border-radius: .75rem;">
+
+				<strong style="font-size: 1.5em;">
+					@SelectedEvent.Registrations.Count
+				</strong>
+
+				<h6 class="text-muted" style="font-size: 0.8em;">
+					Registered
+				</h6>
 			</div>
 
-			<div class="card d-flex flex-column justify-content-center align-items-center flex-grow-1 p-3">
-				<h6>Location</h6>
-				<p>@SelectedEvent.Venue?.Name, @SelectedEvent.Venue?.Address</p>
+			<div class="card d-flex flex-column justify-content-center align-items-center flex-grow-1 p-3" style="border-radius: .75rem;">
+				<strong style="font-size: 1.5em;">@(SelectedEvent.Registrations.Count(r => r.RegisterStatus?.Id == 4))</strong>
+				<h6 class="text-muted" style="font-size: 0.8em;">Checked-in</h6>	
 			</div>
+		</div>
+
+		<div class="d-flex flex-row border-bottom gap-2 mb-4 align-items-center" style="border-color: #e5e7eb !important;">
+			<button type="button"
+					class="tab-btn @(ActiveTab == "Overview" ? "tab-active" : "text-muted")"
+					@onclick='() => SetTab("Overview")'>
+				Overview
+			</button>
+			<button type="button"
+					class="tab-btn @(ActiveTab == "Tickets" ? "tab-active" : "text-muted")"
+					@onclick='() => SetTab("Tickets")'>
+				Tickets
+			</button>
+			<button type="button"
+					class="tab-btn @(ActiveTab == "Registrations" ? "tab-active" : "text-muted")"
+					@onclick='() => SetTab("Registrations")'>
+				Registrations
+			</button>
+		</div>
+
+		<div>
+			@switch (ActiveTab)
+			{
+				case "Overview":
+					<div class="card def-round p-4 gap-3" style="border-radius: .75rem;">
+						<h6>About this event</h6>
+						<p class="text-muted fw-light">@SelectedEvent.Description</p>
+					</div>
+					break;
+
+
+				case "Tickets":
+					<div class="d-flex flex-column gap-3">
+						<button class="btn btn-primary align-self-end" style="border-radius: .75rem; font-size: 0.9em;"
+							@onclick="showAddTicket">
+							Add Ticket Type
+						</button>
+
+						@if(isAddTicket)
+						{
+							@* Add ticket form *@
+							<EditForm Model="TicketModel" OnValidSubmit="HandleTicketSubmit">
+								<DataAnnotationsValidator />
+
+								<div class="card d-flex flex-column p-4 gap-3" style="border-radius: .75rem; border: 1px #4f46e579 solid">
+									<h5>New Ticket Type</h5>
+
+									<div>
+										<label class="form-label" for="name">Name *</label>
+										<InputText class="form-control" @bind-Value="TicketModel.Name" id="name" placeholder="eg., General Admission, VIP"/>
+										<ValidationMessage For="@(() => TicketModel.Name)"/>
+									</div>
+
+									<div>
+										<label class="form-label" for="description">Description</label>
+										<InputText class="form-control" @bind-Value="TicketModel.Description" id="description" placeholder="Optional Description" autocomplete="off" />
+									</div>
+								
+									<div class="form-check">
+										<label class="form-check-label">
+											<InputCheckbox @bind-value="isActive" class="form-check-input" checked />
+											<span>Free ticket</span>
+										</label>
+									</div>
+
+									@if(!isActive)
+									{
+										<div>
+											<label class="form-label" for="price">Price (PHP)</label>
+											<InputNumber class="form-control" @bind-Value="TicketModel.Price" name="price" />
+										</div>
+									}
+
+									<div class="d-flex flex-row gap-3">
+										<div class="flex-grow-1">
+											<label class="form-label" for="quantity">Quantity Limit</label>
+											<InputNumber class="form-control" @bind-Value="TicketModel.Quantity" id="quantity" placeholder="@SelectedEvent.Capacity" />
+											<ValidationMessage For="@(() => TicketModel.Quantity)" />
+											@if (QuantityErr != null)
+											{
+												<p class="alert-danger">@QuantityErr</p>
+											}
+										</div>
+
+										<div class="flex-grow-1">
+											<label class="form-label" for="price">Status</label>
+											<InputSelect class="form-select" @bind-Value="TicketModel.Availability">
+												<option value="@AvailabilityTypeEnum.Active" selected>Active</option>
+												<option value="@AvailabilityTypeEnum.Paused">Paused</option>
+											</InputSelect>
+											<ValidationMessage For="@(() => TicketModel.Availability)" />
+										</div>
+									</div>
+
+									<div>
+										<button class="btn btn-primary" type="submit" @onclick="ValidateTicketForm" style="border-radius: .45rem;">Save</button>
+										<button class="btn btn-outline-secondary" @onclick="closeAddTicket" style="border-radius: .45rem;">Cancel</button>
+									</div>
+								</div>
+							</EditForm>
+						}
+
+						@if (SelectedEvent.TicketTypes.Count == 0)
+						{
+							<div class="card d-flex flex-column justify-content-center align-items-center" style="border-radius: .75rem; padding: 2rem;">
+								<p class="text-muted">No ticket types yet.</p>
+
+								<a class="btn-link text-decoration-none" @onclick="showAddTicket" style="cursor: pointer; color: #4f46e5;">
+									+ Add ticket type
+								</a>
+							</div>
+						}
+
+						<div class="d-flex flex-column gap-2">
+							@foreach(var t in Tickets)
+							{
+								var ticketCounted = t.Registrations?.Count ?? 0;
+								var maxQuantity = t.Quantity ?? SelectedEvent?.Capacity ?? 0;
+
+								<div class="card d-flex flex-row p-3 justify-content-between ">
+									<div class="flex-column">
+										<div class="d-flex flex-row gap-2">
+											<h6>@t.Name</h6>
+											<span class="badge rounded-pill bg-success">@t.Availability</span>
+										</div>
+										<p class="text-muted" style="font-size:0.85rem">@t.Description</p>
+										<div class="d-flex flex-row gap-3">
+											@if(t.IsFree)
+											{
+												<p class="text-muted" style="font-size: 0.85rem;">Free</p>
+											}
+											else
+											{
+												<p>₱@t.Price</p>
+											}
+
+											<p class="text-muted" style="font-size: 0.85rem;">@ticketCounted/@maxQuantity sold</p>
+										</div>
+									</div>
+									<div class="d-flex flex-row gap-2 align-items-center">
+										<div class="edit" @onclick="() => EditTicket(t)">
+											<svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+											<g clip-path="url(#clip0_13_30)">
+												<path d="M11.1667 5.33332H5.33334C4.89131 5.33332 4.46739 5.50891 4.15483 5.82147C3.84227 6.13403 3.66667 6.55796 3.66667 6.99999V18.6667C3.66667 19.1087 3.84227 19.5326 4.15483 19.8452C4.46739 20.1577 4.89131 20.3333 5.33334 20.3333H17C17.442 20.3333 17.866 20.1577 18.1785 19.8452C18.4911 19.5326 18.6667 19.1087 18.6667 18.6667V12.8333M17.4167 4.08332C17.7482 3.7518 18.1978 3.56555 18.6667 3.56555C19.1355 3.56555 19.5852 3.7518 19.9167 4.08332C20.2482 4.41484 20.4344 4.86448 20.4344 5.33332C20.4344 5.80216 20.2482 6.2518 19.9167 6.58332L12 14.5L8.66667 15.3333L9.50001 12L17.4167 4.08332Z" stroke="#1E1E1E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+											</g>
+											<defs>
+												<clipPath id="clip0_13_30">
+													<rect width="20" height="20" fill="white" transform="translate(2 2)" />
+												</clipPath>
+											</defs>
+										</svg>
+										</div>
+
+										<div class="edit" @onclick="() => deleteTicket(t)">
+											<svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+												<path d="M7 21C6.45 21 5.97917 20.8042 5.5875 20.4125C5.19583 20.0208 5 19.55 5 19V6H4V4H9V3H15V4H20V6H19V19C19 19.55 18.8042 20.0208 18.4125 20.4125C18.0208 20.8042 17.55 21 17 21H7ZM17 6H7V19H17V6ZM9 17H11V8H9V17ZM13 17H15V8H13V17Z" fill="#FF5B5B" />
+											</svg>
+										</div>
+									</div>
+								</div>
+							}
+						</div>
+					</div>
+					break;
+
+				case "Registrations":
+					<div class="card">
+						<div class="card-header bg-transparent p-3">
+							<h6>Registrations (@SelectedEvent.Registrations.Count)</h6>
+						</div>
+						@if (SelectedEvent.Registrations.Count != 0)
+						{
+							<table class="table table-hover">
+								<thead>
+									<tr class="table-secondary text-muted">
+										<th scope="col">Attendee</th>
+										<th scope="col">Email</th>
+										<th scope="col">Ticket</th>
+										<th scope="col">Status</th>
+									</tr>
+								</thead>
+
+								<tbody>
+									@foreach (var i in SelectedEvent.Registrations)
+									{
+										<tr class="border-bottom">
+											<td>@i.FullName</td>
+											<td class="text-muted">@i.Email</td>
+											<td>@i.TicketType?.Name</td>
+											<td>
+												<select class="form-select form-select-sm" value="@i.RegisterStatus?.Id" @onchange="(e) => UpdateAttendeeStatus(i, e.Value?.ToString())">
+													@foreach(var item in AllStatus)
+													{
+														<option value="@item.Id">@item.Name</option>
+													}
+												</select>
+											</td>
+										</tr>
+									}
+								</tbody>
+							</table>
+						}
+						else
+						{
+							<div class="card-body p-5">
+								<h6 class="text-muted text-center">No registrations yet.</h6>
+							</div>
+						}
+					</div>
+					break;
+
+			}
 		</div>
 	</div>
 }
@@ -112,25 +362,314 @@ else
 	[Parameter]
 	public Guid Id { get; set; }
 
-	private UserEvent? SelectedEvent { get; set; }
+	private bool isAddTicket = false;
 	private bool IsImageBroken = false;
+	private bool isActive = true;
+	private bool isEditMode = false;
+
+	private string QuantityErr { get; set; } = string.Empty;
+	private string ActiveTab { get; set; } = "Overview";
+	private string? errMsg;
+
+	int eventDurationDays;
+	int eventDurationHours;
+
+	private List<RegisterStatus> AllStatus { get; set; } = new();
+	private List<TicketType> Tickets => SelectedEvent?.TicketTypes.ToList() ?? new();
+	private UserEvent? SelectedEvent { get; set; }
+
+	private TicketType TicketModel { get; set; } = new TicketType
+	{
+		Name = string.Empty,
+		Description = string.Empty,
+		IsFree = true,
+		Availability = AvailabilityTypeEnum.Active
+	};
 
 	private void Handle404Error()
 	{
 		IsImageBroken = true;
 	}
 
+	protected override void OnInitialized()
+	{
+		NotificationService.OnRegistrationAdded += HandleRegistrationNotification;
+	}
+
 	protected override async Task OnParametersSetAsync()
 	{
-		SelectedEvent = await Db.UserEvents
-			.Include(e => e.AppUser)
-			.Include(e => e.Venue)
-			.FirstOrDefaultAsync(e => e.Id == Id);
+		await LoadEventData();
 
-		// Redirect back home safely if someone enters a fake/non-existent Guid in the browser bar
+		AllStatus = await Db.RegisterStatus.ToListAsync();
+
 		if (SelectedEvent == null)
 		{
 			NavManager.NavigateTo("/events");
 		}
+	}
+
+	private async Task LoadEventData()
+	{
+		SelectedEvent = await Db.UserEvents
+			.AsNoTracking()
+			.Include(e => e.AppUser)
+			.Include(e => e.Venue)
+			.Include(e => e.Registrations)
+				.ThenInclude(r => r.RegisterStatus)
+			.Include(e => e.Registrations)
+				.ThenInclude(r => r.TicketType)
+			.Include(e => e.TicketTypes)
+				.ThenInclude(t => t.Registrations)
+			.FirstOrDefaultAsync(e => e.Id == Id);
+
+		eventDurationDays = (SelectedEvent?.EndDate - SelectedEvent?.StartDate)?.Days ?? 0;
+		eventDurationHours = (SelectedEvent?.EndDate - SelectedEvent?.StartDate)?.Hours ?? 0;
+	}
+
+	private async void HandleRegistrationNotification(Guid updatedEventId)
+	{
+		if (updatedEventId == Id)
+		{
+			await InvokeAsync(async () =>
+			{
+				await LoadEventData();
+				StateHasChanged();
+			});
+		}
+	}
+
+	private void SetTab(string tabName)
+	{
+		ActiveTab = tabName;
+	}
+
+	private void showAddTicket()
+	{
+		isAddTicket = true;
+	}
+
+	private void closeAddTicket()
+	{
+		isAddTicket = false;
+		ClearTicketForm();
+	}
+
+	private void ClearTicketForm()
+	{
+		TicketModel = new TicketType();
+	}
+
+	private async Task UpdateAttendeeStatus(Registered registration,string? newStatusRawId)
+	{
+		if (int.TryParse(newStatusRawId, out int newStatusId))
+		{
+			try
+			{
+				// 1. Fetch the tracked entity directly from the DB Context
+				var dbRecord = await Db.Registered.FindAsync(registration.Id);
+				if (dbRecord != null)
+				{
+					// 2. Only update the Foreign Key
+					dbRecord.StatusId = newStatusId;
+
+					// 3. Save changes cleanly without entity graph tracking conflicts
+					await Db.SaveChangesAsync();
+
+					// 4. Reload local UI state
+					await LoadEventData();
+				}
+			}
+			catch (Exception ex)
+			{
+				errMsg = $"Failed to update attendee status: {ex.Message}";
+			}
+
+			// registration.StatusId = newStatusId;
+
+			// Save the change to SQL Server
+			// Db.Registered.Update(registration);
+			// await Db.SaveChangesAsync();
+		}
+	}
+
+	private void ValidateTicketForm()
+	{
+		if (isActive == true)
+		{
+			TicketModel.Price = 0;
+			TicketModel.IsFree = true;
+		}
+		else
+		{
+			TicketModel.IsFree = false;
+		}
+
+		if (TicketModel.Quantity > SelectedEvent?.Capacity)
+		{
+			QuantityErr = "Ticket Quantity is limited to event capacity.";
+			return;
+		}
+
+		if (TicketModel.Quantity == null || TicketModel.Quantity == 0)
+		{
+			TicketModel.Quantity = SelectedEvent?.Capacity;
+		}
+
+		TicketModel.EventId = Id;
+	}
+
+	private async Task HandleTicketSubmit()
+	{
+		if (isEditMode)
+		{
+			Db.TicketType.Update(TicketModel);
+		}
+		else
+		{
+			Db.TicketType.Add(TicketModel);
+		}
+		await Db.SaveChangesAsync();
+
+		Db.ChangeTracker.Clear();
+
+		ClearTicketForm();
+		isAddTicket = false;
+		await LoadEventData();
+
+		isActive = true;
+	}
+
+	private void EditTicket(TicketType t)
+	{
+		isEditMode = true;
+
+		TicketModel = new TicketType
+		{
+			Id = t.Id,
+			Name = t.Name,
+			Description = t.Description,
+			Price = t.Price,
+			Quantity = t.Quantity,
+			EventId = t.EventId,
+			IsFree = t.IsFree,
+			Availability = t.Availability
+		};
+
+		isActive = t.IsFree;
+		isAddTicket = true;
+	}
+
+	private async Task deleteTicket(TicketType t)
+	{
+		bool confirmed = await JS.InvokeAsync<bool>("confirm", "Are you sure you want to delete this ticket?");
+
+		if (!confirmed) 
+			return;
+
+		try
+		{
+			var ticketToDelete = await Db.TicketType
+				.FirstOrDefaultAsync(e => e.Id == t.Id);
+
+			if (ticketToDelete == null)
+			{
+				errMsg = "Ticket not found.";
+				return;
+			}
+
+			Db.TicketType.Remove(ticketToDelete);
+			await Db.SaveChangesAsync();
+
+			await LoadEventData();
+		}
+		catch (DbUpdateException ex)
+		{
+			errMsg = "Ticket cannot be deleted because it is currently linked to attendees.";
+		}
+		catch (Exception ex)
+		{
+			errMsg = ex.Message;
+		}
+	}
+
+	private async Task DeleteEvent (Guid eventId)
+	{
+		bool confirmed = await JS.InvokeAsync<bool>("confirm", "Are you sure you want to delete this Event? ");
+
+		if (!confirmed)
+		{
+			return;
+		}
+
+		try
+		{
+			var EventToDelete = await Db.UserEvents
+				.Include(e => e.TicketTypes)
+				.Include(e => e.Registrations)
+				.FirstOrDefaultAsync(e => e.Id == eventId);
+
+			if (EventToDelete == null)
+			{
+				errMsg = "Event not found.";
+				return;
+			}
+
+			if (!string.IsNullOrEmpty(EventToDelete.StorageUrl))
+			{
+				try
+				{
+					var cleanPath = EventToDelete.StorageUrl.TrimStart('/');
+					var fullFilePath = Path.Combine(Environment.WebRootPath, cleanPath);
+
+					if (File.Exists(fullFilePath))
+					{
+						File.Delete(fullFilePath);
+					}
+				}
+				catch (Exception ex)
+				{
+					Console.WriteLine($"Failed to delete event banner file: {ex.Message}");
+				}
+			}
+
+			// 3. Delete event from Database (EF Core handles linked TicketTypes and Registrations)
+			Db.UserEvents.Remove(EventToDelete);
+			await Db.SaveChangesAsync();
+
+			// 4. Redirect user back to events list
+			NavManager.NavigateTo("/events", forceLoad: true);
+
+		}
+		catch (Exception ex)
+		{
+			errMsg = ex.Message;
+		}
+	}
+
+	private async Task MarkComplete()
+	{
+		try
+		{
+			var eventupdate = await Db.UserEvents.FindAsync(Id);
+
+			if (eventupdate != null)
+			{
+				eventupdate.Status = EventStatusEnum.Completed;
+				await Db.SaveChangesAsync();
+
+				// Refresh local model/list state
+				SelectedEvent!.Status = EventStatusEnum.Completed;
+				StateHasChanged();
+			}
+		}
+		catch (Exception ex)
+		{
+			errMsg = ex.Message;
+		}
+	}
+
+	public void Dispose()
+	{
+		NotificationService.OnRegistrationAdded -= HandleRegistrationNotification; 
 	}
 }
