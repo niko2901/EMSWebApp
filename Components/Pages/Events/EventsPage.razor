@@ -26,8 +26,10 @@
 				<a class="btn btn-primary" href="/events/new" style="border-radius: .55rem;">New Event</a>
 			</div>
 		</div>
+
+		@* Event search *@
 		<div class="d-flex flex-row gap-2">
-			<input class="form-control flex-grow-1" placeholder="Search events..." style="border-radius: .45rem;" />
+			<input class="form-control flex-grow-1" value="@searchText" @oninput="OnSearchInput" placeholder="Search events..." style="border-radius: .45rem;" />
 
 			<select @onchange="FilterChange" class="form-select" style="border-radius: .45rem; width:14rem;">
 				<option value="" selected>All Status</option>
@@ -91,6 +93,7 @@
 	private List<UserEvent> filterEvents = new();
 	private EventStatusEnum? status;
 	private int eventCount;
+	private string? searchText;
 
 	protected override async Task OnInitializedAsync()
 	{
@@ -109,7 +112,7 @@
 		filterEvents = userEvents;
 	}
 
-	private async Task ApplyFilter()
+	private void ApplyFilter()
 	{
 		if (status == null)
 		{
@@ -124,7 +127,7 @@
 		StateHasChanged();
 	}
 
-	private async Task FilterChange(ChangeEventArgs e)
+	private void FilterChange(ChangeEventArgs e)
 	{
 		var rawValue = e.Value?.ToString();
 
@@ -137,6 +140,36 @@
 			status = parsedStatus;
 		}
 
-		await ApplyFilter();
+		ApplyFilter();
+	}
+
+	private void ApplySearch()
+	{
+		if (string.IsNullOrWhiteSpace(searchText))
+		{
+			ApplyFilter();
+		}
+
+		if(status == null)
+		{
+			filterEvents = userEvents
+			.Where(e => $"{e.Name}".Contains(searchText ?? "", StringComparison.OrdinalIgnoreCase)).ToList();
+			return;
+		}
+
+		filterEvents = userEvents
+			.Where(e => e.Status == status!.Value && $"{e.Name}".Contains(searchText ?? "", StringComparison.OrdinalIgnoreCase)).ToList();
+	}
+
+	private void OnSearchInput(ChangeEventArgs e)
+	{
+		searchText = e.Value?.ToString() ?? "";
+		ApplySearch();
+
+		if (string.IsNullOrWhiteSpace(searchText))
+		{
+			ApplyFilter();
+			return;
+		}
 	}
 }
