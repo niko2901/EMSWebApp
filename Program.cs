@@ -15,7 +15,7 @@ builder.Services.AddCascadingAuthenticationState();
 
 builder.Services.AddSingleton<EventNotificationService>();
 
-builder.Services.AddDbContext<AppDbContext>(options =>
+builder.Services.AddDbContextFactory<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 builder.Services.AddIdentity<AppUser, IdentityRole<int>>(options =>

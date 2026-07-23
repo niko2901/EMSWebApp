@@ -37,6 +37,8 @@ th {
 }
 
 td {
+    font-size: 0.875rem;
+    vertical-align: middle;
     border: none;
 }
 

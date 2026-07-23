@@ -4,15 +4,17 @@
 @using Microsoft.EntityFrameworkCore
 @using EMSWebApp.Models.ModelEnums
 @using EMSWebApp.Models
+@using EMSWebApp.Data
 @using EMSWebApp.Services
 @using Microsoft.AspNetCore.Authentication
 @using Microsoft.AspNetCore.Authorization
 
-@inject EMSWebApp.Data.AppDbContext Db
+@inject AppDbContext Db
 @inject EventNotificationService NotificationService
 @inject NavigationManager NavManager
 @inject IWebHostEnvironment Environment
 @inject IJSRuntime JS
+@inject IDbContextFactory<AppDbContext> DbFactory
 
 @implements IDisposable
 
@@ -180,6 +182,11 @@ else
 							Add Ticket Type
 						</button>
 
+						@if(!string.IsNullOrEmpty(ticketErr))
+						{
+							<div class="alert alert-danger">@ticketErr</div>
+						}
+
 						@if(isAddTicket)
 						{
 							@* Add ticket form *@
@@ -220,9 +227,9 @@ else
 											<label class="form-label" for="quantity">Quantity Limit</label>
 											<InputNumber class="form-control" @bind-Value="TicketModel.Quantity" id="quantity" placeholder="@SelectedEvent.Capacity" />
 											<ValidationMessage For="@(() => TicketModel.Quantity)" />
-											@if (QuantityErr != null)
+											@if (!string.IsNullOrEmpty(QuantityErr))
 											{
-												<p class="alert-danger">@QuantityErr</p>
+												<p class="alert py-2 mt-1 alert-danger">@QuantityErr</p>
 											}
 										</div>
 
@@ -265,17 +272,17 @@ else
 									<div class="flex-column">
 										<div class="d-flex flex-row gap-2">
 											<h6>@t.Name</h6>
-											<span class="badge rounded-pill bg-success">@t.Availability</span>
+											<span class="badge rounded-pill @(t.Availability == AvailabilityTypeEnum.Active ? "bg-success" : "bg-secondary") ">@t.Availability</span>
 										</div>
 										<p class="text-muted" style="font-size:0.85rem">@t.Description</p>
-										<div class="d-flex flex-row gap-3">
+										<div class="d-flex flex-row gap-3 align-items-center">
 											@if(t.IsFree)
 											{
-												<p class="text-muted" style="font-size: 0.85rem;">Free</p>
+												<p class="text-muted fw-bold" style="font-size: 0.85rem;">Free</p>
 											}
 											else
 											{
-												<p>₱@t.Price</p>
+												<p class="text-muted fw-bold" style="font-size: 0.85rem;">₱@t.Price</p>
 											}
 
 											<p class="text-muted" style="font-size: 0.85rem;">@ticketCounted/@maxQuantity sold</p>
@@ -317,10 +324,10 @@ else
 							<table class="table table-hover">
 								<thead>
 									<tr class="table-secondary text-muted">
-										<th scope="col">Attendee</th>
-										<th scope="col">Email</th>
-										<th scope="col">Ticket</th>
-										<th scope="col">Status</th>
+										<th class="px-3 py-2" scope="col">Attendee</th>
+										<th class="px-3 py-2" scope="col">Email</th>
+										<th class="px-3 py-2" scope="col">Ticket</th>
+										<th class="px-3 py-2" scope="col">Status</th>
 									</tr>
 								</thead>
 
@@ -328,17 +335,17 @@ else
 									@foreach (var i in SelectedEvent.Registrations)
 									{
 										<tr class="border-bottom">
-											<td>@i.FullName</td>
-											<td class="text-muted">@i.Email</td>
-											<td>@i.TicketType?.Name</td>
-											<td>
+											<td class="px-3 py-2">@i.FullName</td>
+											<td class="px-3 py-2 text-muted">@i.Email</td>
+											<td class="px-3 py-2">@i.TicketType?.Name</td>
+											<td class="px-3 py-2">
 												<select class="form-select form-select-sm" value="@i.RegisterStatus?.Id" @onchange="(e) => UpdateAttendeeStatus(i, e.Value?.ToString())">
 													@foreach(var item in AllStatus)
 													{
 														<option value="@item.Id">@item.Name</option>
 													}
 												</select>
-											</td>
+											</td class="px-3 py-2">
 										</tr>
 									}
 								</tbody>
@@ -352,7 +359,6 @@ else
 						}
 					</div>
 					break;
-
 			}
 		</div>
 	</div>
@@ -367,12 +373,15 @@ else
 	private bool isActive = true;
 	private bool isEditMode = false;
 
-	private string QuantityErr { get; set; } = string.Empty;
 	private string ActiveTab { get; set; } = "Overview";
+	private string? QuantityErr;
 	private string? errMsg;
+	private string? ticketErr;
 
-	int eventDurationDays;
-	int eventDurationHours;
+	private int eventDurationDays;
+	private int eventDurationHours;
+	private int ticketLeft;
+	private int ticketUsed = 0;
 
 	private List<RegisterStatus> AllStatus { get; set; } = new();
 	private List<TicketType> Tickets => SelectedEvent?.TicketTypes.ToList() ?? new();
@@ -400,12 +409,21 @@ else
 	{
 		await LoadEventData();
 
+		ticketLeft = SelectedEvent?.Capacity ?? 0;
+
 		AllStatus = await Db.RegisterStatus.ToListAsync();
+
+		await LoadCompute();
 
 		if (SelectedEvent == null)
 		{
 			NavManager.NavigateTo("/events");
 		}
+	}
+
+	private async Task LoadCompute()
+	{
+		ticketLeft -= (int)await Db.TicketType.Where(e => e.EventId == Id).SumAsync(e => e.Quantity);
 	}
 
 	private async Task LoadEventData()
@@ -451,6 +469,7 @@ else
 	private void closeAddTicket()
 	{
 		isAddTicket = false;
+		QuantityErr = null;
 		ClearTicketForm();
 	}
 
@@ -465,17 +484,13 @@ else
 		{
 			try
 			{
-				// 1. Fetch the tracked entity directly from the DB Context
 				var dbRecord = await Db.Registered.FindAsync(registration.Id);
 				if (dbRecord != null)
 				{
-					// 2. Only update the Foreign Key
 					dbRecord.StatusId = newStatusId;
 
-					// 3. Save changes cleanly without entity graph tracking conflicts
 					await Db.SaveChangesAsync();
 
-					// 4. Reload local UI state
 					await LoadEventData();
 				}
 			}
@@ -483,17 +498,17 @@ else
 			{
 				errMsg = $"Failed to update attendee status: {ex.Message}";
 			}
-
-			// registration.StatusId = newStatusId;
-
-			// Save the change to SQL Server
-			// Db.Registered.Update(registration);
-			// await Db.SaveChangesAsync();
 		}
 	}
 
 	private void ValidateTicketForm()
 	{
+		if (TicketModel.Quantity > SelectedEvent?.Capacity || TicketModel.Quantity > ticketLeft)
+		{
+			QuantityErr = "Ticket Quantity is limited to event capacity.";
+			return;
+		}
+
 		if (isActive == true)
 		{
 			TicketModel.Price = 0;
@@ -502,12 +517,6 @@ else
 		else
 		{
 			TicketModel.IsFree = false;
-		}
-
-		if (TicketModel.Quantity > SelectedEvent?.Capacity)
-		{
-			QuantityErr = "Ticket Quantity is limited to event capacity.";
-			return;
 		}
 
 		if (TicketModel.Quantity == null || TicketModel.Quantity == 0)
@@ -520,27 +529,44 @@ else
 
 	private async Task HandleTicketSubmit()
 	{
-		if (isEditMode)
+		await using var db = await DbFactory.CreateDbContextAsync();
+
+		try
 		{
-			Db.TicketType.Update(TicketModel);
+			if(TicketModel.Quantity < ticketUsed)
+			{
+				QuantityErr = "Ticket quantinty cannot be set lower than the ticket that is used.";
+				return;
+			}
+
+			if (isEditMode)
+			{
+				db.TicketType.Update(TicketModel);
+			}
+			else
+			{
+				db.TicketType.Add(TicketModel);
+			}
+			await db.SaveChangesAsync();
+
+			closeAddTicket();
+
+			await LoadEventData();
+			await LoadCompute();
+
+			isActive = true;
+			isEditMode = false;
 		}
-		else
+		catch (Exception ex)
 		{
-			Db.TicketType.Add(TicketModel);
+			ticketErr = ex.Message;
 		}
-		await Db.SaveChangesAsync();
 
-		Db.ChangeTracker.Clear();
-
-		ClearTicketForm();
-		isAddTicket = false;
-		await LoadEventData();
-
-		isActive = true;
 	}
 
 	private void EditTicket(TicketType t)
 	{
+
 		isEditMode = true;
 
 		TicketModel = new TicketType
@@ -557,6 +583,9 @@ else
 
 		isActive = t.IsFree;
 		isAddTicket = true;
+
+		ticketUsed = (int)(t.Quantity!-(t.Quantity! - t.Registrations!.Count()));
+
 	}
 
 	private async Task deleteTicket(TicketType t)
