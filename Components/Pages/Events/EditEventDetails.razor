@@ -212,8 +212,8 @@
 
 		if (EventModel != null)
 		{
-			EventModel.StorageUrl = null;
-			EventModel.FileName = null;
+			EventModel.StorageUrl = string.Empty;
+			EventModel.FileName = string.Empty;
 		}
 	}
 
@@ -268,7 +268,28 @@
 			}
 		}
 
+		var localStart = DateTime.SpecifyKind(EventModel.StartDate, DateTimeKind.Local);
+		EventModel.StartDate = localStart.ToUniversalTime();
 
+		var localEnd = DateTime.SpecifyKind(EventModel.EndDate, DateTimeKind.Local);
+		EventModel.EndDate = localEnd.ToUniversalTime();
+
+		if (EventModel.RegistrationStart.HasValue)
+		{
+			var localRegistrationStart = DateTime.SpecifyKind(EventModel.RegistrationStart.Value, DateTimeKind.Local);
+			EventModel.RegistrationStart = localRegistrationStart.ToUniversalTime();
+		}
+
+		if (EventModel.RegistrationDeadline.HasValue)
+		{
+			var localRegistrationEnd = DateTime.SpecifyKind(EventModel.RegistrationDeadline.Value, DateTimeKind.Local);
+			EventModel.RegistrationDeadline = localRegistrationEnd.ToUniversalTime();
+		}
+
+		if(EventModel.StartDate > DateTime.UtcNow)
+		{
+			EventModel.Status = EventStatusEnum.Published;
+		}
 
 		try
 		{

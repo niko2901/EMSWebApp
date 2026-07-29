@@ -1,5 +1,5 @@
 ﻿@page "/events"
-@attribute [Authorize(Roles = "Admin")]
+@attribute [Authorize]
 
 @using EMSWebApp.Models
 @using EMSWebApp.Models.ModelEnums
@@ -41,49 +41,70 @@
 		</div>
 	</div>
 
-	@* show event made *@
-	<div class="w-100">
-		<div class="row row-cols-1 row-cols-md-3 g-3">
-			@foreach (var ev in filterEvents)
-			{
-				<a class="col text-black text-decoration-none" style="cursor: pointer" href="/events/@ev.Id">
+	@if (filterEvents?.Count != 0)
+	{
+		@* show event made *@
+		<div class="w-100">
+			<div class="row row-cols-1 row-cols-md-3 g-3">
+				@foreach (var ev in filterEvents!)
+				{
+					<a class="col text-black text-decoration-none" style="cursor: pointer" href="/events/@ev.Id">
 
-					<div class="hover-card border-0 card p-0 overflow-hidden" style="border-radius: 10px;">
-						<div class="overflow-hidden" style="height: 10rem;">
-							@if (ev.StorageUrl != "")
-							{
-								<img src="@ev.StorageUrl" class=" w-100" style="object-fit: cover; height:10rem;" />
-							}
-							else
-							{
-								<div class="d-flex justify-content-center align-items-center w-100 card-img-top" style="height: 10rem; background: #5296FA;">
-									<svg width="36" height="37" viewBox="0 0 26 27" fill="none" xmlns="http://www.w3.org/2000/svg">
-										<rect x="1" y="2.77777" width="24" height="23" rx="3" stroke="black" stroke-width="2" stroke-miterlimit="1.52425" />
-										<line x1="1" y1="8.88889" x2="25" y2="8.88889" stroke="black" stroke-width="2" />
-										<line x1="7" y1="1.11111" x2="7" y2="4.44445" stroke="black" stroke-width="2" stroke-linecap="round" />
-										<path d="M19 1V4.55556" stroke="black" stroke-width="2" stroke-linecap="round" />
-									</svg>
-								</div>
-							}
-						</div>
-						
-						<div class="card-body p-3">
-							<div class="d-flex flex-row justify-content-between align-items-baseline">
-								<h5>@ev.Name</h5>
-								<span class="badge rounded-pill @(ev.Status == EventStatusEnum.Published ? "bg-success" : "bg-secondary")">@ev.Status</span>
+						<div class="hover-card border-0 card p-0 overflow-hidden" style="border-radius: 10px;">
+							<div class="overflow-hidden" style="height: 10rem;">
+								@if (ev.StorageUrl != "")
+								{
+									<img src="@ev.StorageUrl" class=" w-100" style="object-fit: cover; height:10rem;" />
+								}
+								else
+								{
+									<div class="d-flex justify-content-center align-items-center w-100 card-img-top" style="height: 10rem; background: #5296FA;">
+										<svg width="36" height="37" viewBox="0 0 26 27" fill="none" xmlns="http://www.w3.org/2000/svg">
+											<rect x="1" y="2.77777" width="24" height="23" rx="3" stroke="black" stroke-width="2" stroke-miterlimit="1.52425" />
+											<line x1="1" y1="8.88889" x2="25" y2="8.88889" stroke="black" stroke-width="2" />
+											<line x1="7" y1="1.11111" x2="7" y2="4.44445" stroke="black" stroke-width="2" stroke-linecap="round" />
+											<path d="M19 1V4.55556" stroke="black" stroke-width="2" stroke-linecap="round" />
+										</svg>
+									</div>
+								}
 							</div>
 
-							<p class="text-muted" style="font-size: .85rem;">by @ev.AppUser?.FullName</p>
+							<div class="card-body p-3">
+								<div class="d-flex flex-row justify-content-between align-items-baseline">
+									<h5>@ev.Name</h5>
+									<span class="badge rounded-pill @(ev.Status == EventStatusEnum.Published ? "bg-success" : "bg-secondary")">@ev.Status</span>
+								</div>
 
-							<p class="text-muted" style="font-size: .85rem;">@ev.StartDate?.ToString("dddd, MMM dd")</p>
+								<p class="text-muted" style="font-size: .85rem;">by @ev.AppUser?.FullName</p>
 
-							<p class="text-muted" style="font-size: .85rem;">Capacity: @ev.Capacity</p>
+								<p class="text-muted" style="font-size: .85rem;">@ev.StartDate.ToString("dddd, MMM dd")</p>
+
+								<p class="text-muted" style="font-size: .85rem;">Capacity: @ev.Capacity</p>
+							</div>
 						</div>
-					</div>
-				</a>
-			}
+					</a>
+				}
+			</div>
 		</div>
-	</div>
+	}
+	else
+	{
+		<div class="card" style="height: 20rem;">
+			<div class="card-body d-flex flex-column justify-content-center align-items-center gap-3">
+				<svg opacity="40%" width="46" height="47" viewBox="0 0 26 27" fill="none" xmlns="http://www.w3.org/2000/svg">
+					<rect x="1" y="2.77777" width="24" height="23" rx="3" stroke="black" stroke-width="2" stroke-miterlimit="1.52425" />
+					<line x1="1" y1="8.88889" x2="25" y2="8.88889" stroke="black" stroke-width="2" />
+					<line x1="7" y1="1.11111" x2="7" y2="4.44445" stroke="black" stroke-width="2" stroke-linecap="round" />
+					<path d="M19 1V4.55556" stroke="black" stroke-width="2" stroke-linecap="round" />
+				</svg>
+				<div class="d-flex flex-column align-items-center">
+					<h5>No events found</h5>
+					<p class="text-muted" style="font-size: 0.87rem;">Try adjusting your filters.</p>
+				</div>
+				<button class="btn btn-primary rounded-3">Create Event</button>
+			</div>
+		</div>
+	}
 </div>
 
 

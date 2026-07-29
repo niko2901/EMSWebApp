@@ -117,7 +117,7 @@
 
 					<div class="col">
 						<label class="form-label">End Date & Time *</label>
-						<InputDate Type="InputDateType.DateTimeLocal" class="form-control" @bind-Value="EventModel.EndDate"/>
+						<InputDate Type="InputDateType.DateTimeLocal" class="form-control" @bind-Value="EventModel.EndDate" />
 						<ValidationMessage For="@(() => EventModel.EndDate)" />
 					</div>
 				</div>
@@ -141,7 +141,7 @@
 				<div class="row row-cols-1 row-cols-md-2 g-3">
 					<div class="col">
 						<label class="form-label">Registration Start</label>
-						<InputDate Type="InputDateType.DateTimeLocal" class="form-control" @bind-Value="EventModel.RegistrationStart"/>
+						<InputDate Type="InputDateType.DateTimeLocal" class="form-control" @bind-Value="EventModel.RegistrationStart" />
 					</div>
 
 					<div class="col">
@@ -290,6 +290,12 @@
 			}
 		}
 
+		var localStart = DateTime.SpecifyKind(EventModel.StartDate, DateTimeKind.Local);
+		EventModel.StartDate = localStart.ToUniversalTime();
+
+		var localEnd = DateTime.SpecifyKind(EventModel.EndDate, DateTimeKind.Local);
+		EventModel.EndDate = localEnd.ToUniversalTime();
+
 		if (EventModel.RegistrationStart == null)
 		{
 			EventModel.RegistrationStart = DateTime.UtcNow;
@@ -297,12 +303,13 @@
 
 		if (EventModel.RegistrationDeadline == null)
 		{
-			EventModel.RegistrationDeadline = EventModel.StartDate?.AddHours(-2);
+			EventModel.RegistrationDeadline = EventModel.StartDate.AddHours(-2);
 		}
 
 		if (EventModel.EndDate < DateTime.UtcNow)
 		{
 			EventModel.Status = EventStatusEnum.Completed;
+			EventModel.RegistrationStart = EventModel.StartDate.AddDays(-1);
 		}
 
 		try

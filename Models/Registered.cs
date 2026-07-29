@@ -36,5 +36,7 @@ namespace EMSWebApp.Models
         public RegisterStatus? RegisterStatus { get; set; }
 
         public DateTime RegisterDate { get; set; } = DateTime.UtcNow;
+
+        public DateTime? CheckInDate { get; set; }
     }
 }

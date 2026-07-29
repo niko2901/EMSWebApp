@@ -20,6 +20,8 @@
 
 @rendermode InteractiveServer
 
+<PageTitle>EMS | @SelectedEvent?.Name</PageTitle>
+
 @if (SelectedEvent == null)
 {
 	<div class="p-4 text-center">
@@ -93,19 +95,19 @@ else
 			@* Event Registration Date*@
 			<div class="card p-3 flex-grow-1" style="border-radius: .75rem;">
 				<h6 class="text-muted" style="font-weight: 400;">Registration Start</h6>
-				<p style="font-weight: 400; font-size: 16px;">@SelectedEvent.RegistrationStart?.ToString("dddd, MMM dd \u2022 h:mm tt")</p>
+				<p style="font-weight: 400; font-size: 16px;">@SelectedEvent.RegistrationStart?.ToLocalTime().ToString("dddd, MMM dd \u2022 h:mm tt")</p>
 				<hr class="my-2"/>
 				<h6 class="text-muted" style="font-weight: 400;">End</h6>
-				<p style="font-weight: 400; font-size: 16px;">@SelectedEvent.RegistrationDeadline?.ToString("dddd, MMM dd \u2022 h:mm tt")</p>
+				<p style="font-weight: 400; font-size: 16px;">@SelectedEvent.RegistrationDeadline?.ToLocalTime().ToString("dddd, MMM dd \u2022 h:mm tt")</p>
 			</div>
 
 			@* Event Start Date*@
 			<div class="card p-3 flex-grow-1" style="border-radius: .75rem;">
 				<h6 class="text-muted" style="font-weight: 400;">Event Start</h6>
-				<p style="font-weight: 400; font-size: 16px;">@SelectedEvent.StartDate?.ToString("dddd, MMM dd \u2022 h:mm tt")</p>
+				<p style="font-weight: 400; font-size: 16px;">@SelectedEvent.StartDate.ToLocalTime().ToString("dddd, MMM dd \u2022 h:mm tt")</p>
 				<hr class="my-2" />
 				<h6 class="text-muted" style="font-weight: 400;">End</h6>
-				<p style="font-weight: 400; font-size: 16px;">@SelectedEvent.EndDate?.ToString("dddd, MMM dd \u2022 h:mm tt")</p>
+				<p style="font-weight: 400; font-size: 16px;">@SelectedEvent.EndDate.ToLocalTime().ToString("dddd, MMM dd \u2022 h:mm tt")</p>
 			</div>
 
 			<div class="card p-3 flex-grow-1 justify-content-center" style="border-radius: .75rem;">
@@ -179,12 +181,15 @@ else
 					<div class="d-flex flex-column gap-3">
 						<button class="btn btn-primary align-self-end" style="border-radius: .75rem; font-size: 0.9em;"
 							@onclick="showAddTicket">
-							Add Ticket Type
+							Add Ticket Type @ticketLeft
 						</button>
 
 						@if(!string.IsNullOrEmpty(ticketErr))
 						{
-							<div class="alert alert-danger">@ticketErr</div>
+							<div class="alert alert-danger d-flex justify-content-between">
+								<p>@ticketErr</p>
+								<button class="btn btn-close" @onclick="() => ticketErr = null"></button>
+							</div>
 						}
 
 						@if(isAddTicket)
@@ -423,6 +428,7 @@ else
 
 	private async Task LoadCompute()
 	{
+		ticketLeft = SelectedEvent?.Capacity ?? 0;
 		ticketLeft -= (int)await Db.TicketType.Where(e => e.EventId == Id).SumAsync(e => e.Quantity);
 	}
 
@@ -488,6 +494,7 @@ else
 				if (dbRecord != null)
 				{
 					dbRecord.StatusId = newStatusId;
+					dbRecord.CheckInDate = null;
 
 					await Db.SaveChangesAsync();
 
@@ -610,14 +617,15 @@ else
 			await Db.SaveChangesAsync();
 
 			await LoadEventData();
+			await LoadCompute();
 		}
 		catch (DbUpdateException ex)
 		{
-			errMsg = "Ticket cannot be deleted because it is currently linked to attendees.";
+			ticketErr = "Ticket cannot be deleted because it is currently linked to attendees.";
 		}
 		catch (Exception ex)
 		{
-			errMsg = ex.Message;
+			ticketErr = ex.Message;
 		}
 	}
 

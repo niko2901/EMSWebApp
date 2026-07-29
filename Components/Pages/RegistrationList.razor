@@ -23,15 +23,24 @@
 		</div>
 
 		<div class="d-flex gap-2">
-			<input type="text" class="form-control flex-grow-1" placeholder="Search Name..."/>
+			@* input search registered users  *@
+			<input type="text" value="@searchUser" @oninput="FilterList" class="form-control flex-grow-1" placeholder="Search Name..."/>
 
-			<select class="form-select" style="width: 17rem;">
-				<option value="value">All Events</option>
-			</select>
+			<InputSelect @bind-Value="eventId" @bind-Value:after="FilterByEvent" class="form-select" style="width: 17rem;">
+				<option value="@Guid.Empty" selected>All Events</option>
+				@foreach(var events in userEvents)
+				{
+					<option value="@events.Id">@events.Name</option>
+				}
+			</InputSelect>
 
-			<select class="form-select" style="width: 11rem;">
-				<option value="value">All Status</option>
-			</select>
+			<InputSelect @bind-Value="regStatusId" @bind-Value:after="FilterByEvent" class="form-select" style="width: 11rem;">
+				<option value="">All Status</option>
+				@foreach (var stats in regStatus)
+				{
+					<option value="@stats.Id">@stats.Name</option>
+				}
+			</InputSelect>
 		</div>
 
 		<div class="overflow-hidden rounded-4">
@@ -48,7 +57,7 @@
 				</thead>
 
 				<tbody>
-					@foreach (var item in registeredUser)
+					@foreach (var item in filteredUser)
 					{
 						<tr>
 							<td class="px-3 py-2">
@@ -74,22 +83,70 @@
 
 @code {
 	private List<Registered> registeredUser = new();
+	private List<UserEvent> userEvents = new();
+	private List<Registered> filteredUser = new();
+	private List<RegisterStatus> regStatus = new();
+	private Guid eventId;
+	private int? regStatusId;
+
 	private int registerCount;
+
+	private string? searchUser = string.Empty;
 
 	protected override async Task OnInitializedAsync()
 	{
-		await LoadReigstered();
+		await LoadRegistered();
 	}
 
-	private async Task LoadReigstered()
+	private async Task LoadRegistered()
 	{
 		registeredUser = await Db.Registered
 			.Include(e => e.UserEvent)
 			.Include(e => e.TicketType)
 			.Include(e => e.RegisterStatus)
+			.Where(e => e.UserEvent!.Status == EventStatusEnum.Published)
 			.ToListAsync();
 
+		userEvents = await Db.UserEvents.Where(e => e.Status == EventStatusEnum.Published).ToListAsync();
+		regStatus = await Db.RegisterStatus.ToListAsync();
 
-		registerCount = await Db.Registered.CountAsync();
+		registerCount = registeredUser.Count();
+		filteredUser = registeredUser;
 	}
+
+	private void FilterList(ChangeEventArgs e)
+	{
+		searchUser = e.Value?.ToString() ?? "";
+		FilterByEvent();
+
+		if (string.IsNullOrWhiteSpace(searchUser))
+		{
+			FilterByEvent();
+			return;
+		}
+	}
+
+	private void FilterByEvent()
+	{
+		if (eventId == Guid.Empty && regStatusId == null)
+		{
+			filteredUser = registeredUser.Where(e => e.FullName.Contains(searchUser ?? "", StringComparison.OrdinalIgnoreCase)).ToList();
+			return;
+		}
+
+		if (eventId == Guid.Empty)
+		{
+			filteredUser = registeredUser.Where(e => e.FullName.Contains(searchUser ?? "", StringComparison.OrdinalIgnoreCase) && e.StatusId == regStatusId).ToList();
+			return;
+		}
+
+		if (regStatusId == null)
+		{
+			filteredUser = registeredUser.Where(e => e.FullName.Contains(searchUser ?? "", StringComparison.OrdinalIgnoreCase) && e.EventId == eventId).ToList();
+			return;
+		}
+
+		filteredUser = registeredUser.Where(e => e.FullName.Contains(searchUser ?? "", StringComparison.OrdinalIgnoreCase) && e.EventId == eventId && e.StatusId == regStatusId).ToList();
+	}
+
 }

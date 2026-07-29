@@ -192,14 +192,14 @@
 							@* event date *@
 							<div class="d-flex align-items-center gap-2 mb-2 text-muted" style="font-size: 0.9rem;">
 								<i class="bi bi-calendar-event text-primary"></i>
-								<span>@currentEvent?.StartDate?.ToString("MMMM dd, yyyy")</span>
+								<span>@currentEvent?.StartDate.ToString("MMMM dd, yyyy")</span>
 							</div>
 
 							@* event time *@
 							<div class="d-flex align-items-center gap-2 mb-2 text-muted" style="font-size: 0.9rem;">
 								<i class="bi bi-clock text-primary"></i>
 								<span>
-									@currentEvent?.StartDate?.ToString("h:mm tt") - @currentEvent?.EndDate?.ToString("h:mm tt")
+									@currentEvent?.StartDate.ToString("h:mm tt") - @currentEvent?.EndDate.ToString("h:mm tt")
 								</span>
 							</div>
 
