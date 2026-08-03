@@ -121,7 +121,10 @@
 						<ValidationMessage For="@(() => EventModel.EndDate)" />
 					</div>
 				</div>
-
+				@if (!string.IsNullOrEmpty(dateTimeErr))
+				{
+					<p class="alert alert-danger my-0 py-1">@dateTimeErr</p>
+				}
 				<div>
 					<label class="form-label">Venue *</label>
 					<InputSelect class="form-select" @bind-Value="EventModel.VenueId">
@@ -167,6 +170,7 @@
 	private IBrowserFile? selectedFile;
 	private string? previewUrl;
 	private string? sysError { get; set; }
+	private string? dateTimeErr;
 
 	private UserEvent EventModel { get; set; } = new UserEvent
 	{
@@ -228,6 +232,11 @@
 
 	private async Task HandleSubmit()
 	{
+		if (EventModel.StartDate > EventModel.EndDate)
+		{
+			dateTimeErr = "Start date can't be advance than the end date.";
+			return;
+		}
 
 		var AuthState = await AuthStateProvider.GetAuthenticationStateAsync();
 		var user = AuthState.User;
@@ -290,10 +299,10 @@
 			}
 		}
 
-		var localStart = DateTime.SpecifyKind(EventModel.StartDate, DateTimeKind.Local);
+		var localStart = DateTime.SpecifyKind(EventModel.StartDate!.Value, DateTimeKind.Local);
 		EventModel.StartDate = localStart.ToUniversalTime();
 
-		var localEnd = DateTime.SpecifyKind(EventModel.EndDate, DateTimeKind.Local);
+		var localEnd = DateTime.SpecifyKind(EventModel.EndDate!.Value, DateTimeKind.Local);
 		EventModel.EndDate = localEnd.ToUniversalTime();
 
 		if (EventModel.RegistrationStart == null)
@@ -303,13 +312,13 @@
 
 		if (EventModel.RegistrationDeadline == null)
 		{
-			EventModel.RegistrationDeadline = EventModel.StartDate.AddHours(-2);
+			EventModel.RegistrationDeadline = EventModel.StartDate?.AddHours(-2);
 		}
 
 		if (EventModel.EndDate < DateTime.UtcNow)
 		{
 			EventModel.Status = EventStatusEnum.Completed;
-			EventModel.RegistrationStart = EventModel.StartDate.AddDays(-1);
+			EventModel.RegistrationStart = EventModel.StartDate?.AddDays(-1);
 		}
 
 		try

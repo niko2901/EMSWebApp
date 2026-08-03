@@ -48,12 +48,12 @@
 				<div class="d-flex flex-row gap-3">
 					<div class="card p-3 flex-grow-1">
 						<h6 class="text-muted" style="font-weight: 400;">Start</h6>
-						<p style="font-weight: 400; font-size: 16px;">@SelectedEvent?.StartDate.ToString("dddd, MMM dd \u2022 HH:MM tt")</p>
+						<p style="font-weight: 400; font-size: 16px;">@SelectedEvent?.StartDate?.ToString("dddd, MMM dd \u2022 HH:MM tt")</p>
 					</div>
 
 					<div class="card p-3 flex-grow-1">
 						<h6 class="text-muted" style="font-weight: 400;">End</h6>
-						<p style="font-weight: 400; font-size: 16px;">@SelectedEvent?.EndDate.ToString("dddd, MMM dd \u2022 HH:MM tt")</p>
+						<p style="font-weight: 400; font-size: 16px;">@SelectedEvent?.EndDate?.ToString("dddd, MMM dd \u2022 HH:MM tt")</p>
 					</div>
 
 					<div class="card p-3 flex-grow-1">

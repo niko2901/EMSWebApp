@@ -41,10 +41,10 @@ namespace EMSWebApp.Models
         public Venue? Venue { get; set; }
 
         [Required]
-        public DateTime StartDate { get; set; }
+        public DateTime? StartDate { get; set; }
 
         [Required]
-        public DateTime EndDate { get; set; }
+        public DateTime? EndDate { get; set; }
 
         [Required(ErrorMessage = "Status is required."), ]
         public EventStatusEnum Status { get; set; }

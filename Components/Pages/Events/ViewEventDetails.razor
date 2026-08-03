@@ -104,10 +104,10 @@ else
 			@* Event Start Date*@
 			<div class="card p-3 flex-grow-1" style="border-radius: .75rem;">
 				<h6 class="text-muted" style="font-weight: 400;">Event Start</h6>
-				<p style="font-weight: 400; font-size: 16px;">@SelectedEvent.StartDate.ToLocalTime().ToString("dddd, MMM dd \u2022 h:mm tt")</p>
+				<p style="font-weight: 400; font-size: 16px;">@SelectedEvent.StartDate!.Value.ToLocalTime().ToString("dddd, MMM dd \u2022 h:mm tt")</p>
 				<hr class="my-2" />
 				<h6 class="text-muted" style="font-weight: 400;">End</h6>
-				<p style="font-weight: 400; font-size: 16px;">@SelectedEvent.EndDate.ToLocalTime().ToString("dddd, MMM dd \u2022 h:mm tt")</p>
+				<p style="font-weight: 400; font-size: 16px;">@SelectedEvent.EndDate!.Value.ToLocalTime().ToString("dddd, MMM dd \u2022 h:mm tt")</p>
 			</div>
 
 			<div class="card p-3 flex-grow-1 justify-content-center" style="border-radius: .75rem;">

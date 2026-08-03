@@ -4,6 +4,7 @@
 @using System.IO
 @using System.Security.Claims
 @using EMSWebApp.Models
+@using EMSWebApp.Data
 @using EMSWebApp.Models.ModelEnums
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Components
@@ -16,7 +17,7 @@
 @inject AuthenticationStateProvider AuthStateProvider
 @inject NavigationManager NavManager
 
-@inject EMSWebApp.Data.AppDbContext Db
+@inject IDbContextFactory<AppDbContext> DbFactory
 
 @rendermode InteractiveServer
 
@@ -134,6 +135,10 @@
 						<ValidationMessage For="@(() => EventModel.EndDate)" />
 					</div>
 				</div>
+				@if (!string.IsNullOrEmpty(datetimeErr))
+				{
+					<p class="alert alert-danger py-1 my-0">@datetimeErr</p>
+				}
 
 				<div>
 					<label class="form-label">Venue *</label>
@@ -164,7 +169,7 @@
 			</div>
 
 			<div class="d-flex flex-row justify-content-between gap-2">
-				<a class="btn btn-outline-secondary" href="/events/@Id">Cancel</a>
+				<button class="btn btn-outline-secondary" @onclick="CancelForm">Cancel</button>
 				<div>
 					<button type="submit" class="btn btn-primary">Save Changes</button>
 				</div>
@@ -179,6 +184,7 @@
 	private UserEvent? EventModel { get; set; } = new UserEvent();
 
 	private string errMsg = string.Empty;
+	private string? datetimeErr;
 	private IBrowserFile? selectedFile;
 	private string? previewUrl;
 	private string? oldStorageUrl;
@@ -187,12 +193,14 @@
 
 	protected override async Task OnInitializedAsync()
 	{
-		venues = await Db.Venues.OrderBy(e => e.Id).Where(e => e.Status == VenueStatusEnum.Available).ToListAsync();
+		using var db = await DbFactory.CreateDbContextAsync();
+		venues = await db.Venues.AsNoTracking().OrderBy(e => e.Id).Where(e => e.Status == VenueStatusEnum.Available).ToListAsync();
 	}
 
 	protected override async Task OnParametersSetAsync()
 	{
-		EventModel = await Db.UserEvents.FirstOrDefaultAsync(e => e.Id == Id);
+		using var db = await DbFactory.CreateDbContextAsync();
+		EventModel = await db.UserEvents.FirstOrDefaultAsync(e => e.Id == Id);
 
 		if (EventModel == null)
 		{
@@ -200,9 +208,23 @@
 		}
 		else
 		{
+			EventModel.StartDate = EventModel.StartDate!.Value.ToLocalTime();
+			EventModel.EndDate = EventModel.EndDate!.Value.ToLocalTime();
+
+			if (EventModel.RegistrationStart.HasValue)
+				EventModel.RegistrationStart = EventModel.RegistrationStart.Value.ToLocalTime();
+			if (EventModel.RegistrationDeadline.HasValue)
+				EventModel.RegistrationDeadline = EventModel.RegistrationDeadline.Value.ToLocalTime();
+
 			previewUrl = EventModel.StorageUrl;
 			oldStorageUrl = EventModel.StorageUrl;
 		}
+	}
+
+	private void CancelForm()
+	{
+		EventModel = new UserEvent();
+		NavManager.NavigateTo($"/events/{Id}");
 	}
 
 	private void ClearSelectedFile()
@@ -219,6 +241,14 @@
 
 	private async Task HandleSubmit(EditContext args)
 	{
+		using var db = await DbFactory.CreateDbContextAsync();
+
+		if (EventModel!.StartDate > EventModel!.EndDate)
+		{
+			datetimeErr = "Start date can't be advance than the end date.";
+			return;
+		}
+
 		if (selectedFile != null)
 		{
 			try
@@ -252,7 +282,6 @@
 		{
 			try
 			{
-				// Convert relative url ("/uploads/abc.jpg") to absolute system path ("C:\...\wwwroot\uploads\abc.jpg")
 				var relativePath = oldStorageUrl.TrimStart('/');
 				var fullOldPath = Path.Combine(Environment.WebRootPath, relativePath);
 
@@ -267,11 +296,11 @@
 				errMsg = $"Failed to delete old file: {ex.Message}";
 			}
 		}
-
-		var localStart = DateTime.SpecifyKind(EventModel.StartDate, DateTimeKind.Local);
+		
+		var localStart = DateTime.SpecifyKind(EventModel.StartDate!.Value, DateTimeKind.Local);
 		EventModel.StartDate = localStart.ToUniversalTime();
 
-		var localEnd = DateTime.SpecifyKind(EventModel.EndDate, DateTimeKind.Local);
+		var localEnd = DateTime.SpecifyKind(EventModel.EndDate!.Value, DateTimeKind.Local);
 		EventModel.EndDate = localEnd.ToUniversalTime();
 
 		if (EventModel.RegistrationStart.HasValue)
@@ -286,6 +315,7 @@
 			EventModel.RegistrationDeadline = localRegistrationEnd.ToUniversalTime();
 		}
 
+
 		if(EventModel.StartDate > DateTime.UtcNow)
 		{
 			EventModel.Status = EventStatusEnum.Published;
@@ -293,8 +323,8 @@
 
 		try
 		{
-			Db.UserEvents.Update(EventModel!);
-			await Db.SaveChangesAsync();
+			db.UserEvents.Update(EventModel!);
+			await db.SaveChangesAsync();
 
 			NavManager.NavigateTo($"/events/{Id}");
 		}
