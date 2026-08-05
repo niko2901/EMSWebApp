@@ -45,7 +45,7 @@
 			</div>
 
 			<div class="d-flex flex-column gap-4 @(isSuccess ? "d-none" : "")">
-				<div class="d-flex flex-row gap-3">
+				<div class="d-flex flex-column flex-lg-row gap-1 gap-lg-3">
 					<div class="card p-3 flex-grow-1">
 						<h6 class="text-muted" style="font-weight: 400;">Start</h6>
 						<p style="font-weight: 400; font-size: 16px;">@SelectedEvent?.StartDate?.ToString("dddd, MMM dd \u2022 HH:MM tt")</p>
@@ -80,7 +80,7 @@
 						@foreach (var item in AvailableTickets)
 						{
 							var ticketRemaining = item.Quantity - item.Registrations.Count;
-							<div class="ticket d-flex flex-row justify-content-between border-bottom py-3">
+							<div class="ticket d-flex flex-row justify-content-between border-bottom py-3 gap-2">
 								<div>
 									<h6>@item.Name</h6>
 									<p class="text-muted" style="font-size: .8rem;">@item.Description</p>
@@ -135,7 +135,14 @@
 								<InputText class="form-control" @bind-Value="RegisterModel.Phone" id="phone" placeholder="+63 9XX XXX XXXX" maxlength="11" />
 							</div>
 
-							<button type="submit" class="btn btn-primary py-2 fw-bold" style="border-radius: .75rem;">Register Now</button>
+							@if (isSubmitting)
+							{
+								<button class="btn btn-primary py-2 fw-bold" style="border-radius: .75rem;" disabled></button>
+							}
+							else
+							{
+								<button type="submit" class="btn btn-primary py-2 fw-bold" style="border-radius: .75rem;">Register Now</button>
+							}
 						</div>
 					</EditForm>
 				</div>
@@ -161,6 +168,7 @@
 	[Parameter]
 	public Guid Id { get; set; }
 	private bool isSuccess { get; set; } = false;
+	private bool isSubmitting = false;
 	private string userEmail { get; set; } = string.Empty;
 
 	private string errMessage { get; set; } = string.Empty;
@@ -186,6 +194,7 @@
 			.Include(e => e.Venue)
 			.Include(e => e.AppUser)
 			.Include(e => e.TicketTypes)
+				.ThenInclude(e => e.Registrations)
 			.FirstOrDefaultAsync(e => e.Id == Id);
 
 		if (SelectedEvent == null)
@@ -196,12 +205,14 @@
 
 	public async Task HandleSubmit()
 	{
+		isSubmitting = true;
 		RegisterModel.EventId = Id;
 		userEmail = RegisterModel.Email;
 
 		if (RegisterModel.TicketTypeId == Guid.Empty)
 		{
 			selectErr = "Ticket Type is required.";
+			isSubmitting = false;
 			return;
 		}
 
@@ -215,10 +226,12 @@
 				isSuccess = true;
 				NotificationService.NotifyRegistrationChange(RegisterModel.EventId);
 			}
+			isSubmitting = false;
 		}
 		catch (Exception ex)
 		{
 			errMessage = ex.Message;
+			isSubmitting = false;
 		}
 	}
 }
