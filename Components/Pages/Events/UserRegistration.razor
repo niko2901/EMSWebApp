@@ -9,6 +9,8 @@
 @inject EMSWebApp.Data.AppDbContext Db
 @inject EventNotificationService NotificationService
 @inject NavigationManager NavManager
+@inject TicketPdfService PdfService
+@inject IJSRuntime JS
 
 @rendermode InteractiveServer
 
@@ -131,7 +133,7 @@
 							</div>
 
 							<div>
-								<label class="form-label" for="phone">Phone</label>
+								<label class="form-label" for="phone">Phone <span class="text-muted">(Optional)</span></label>
 								<InputText class="form-control" @bind-Value="RegisterModel.Phone" id="phone" placeholder="+63 9XX XXX XXXX" maxlength="11" />
 							</div>
 
@@ -152,11 +154,10 @@
 			@if (isSuccess)
 			{
 				<div class="card p-4 gap-3 ">
-					<h3>🎉 You're almost in!</h3>
+					<h3>🎉 You're registered!</h3>
 					<p>
-						We've sent a verification link to @userEmail <br />
-						Please check your inbox and click the link to confirm your attendance and secure your ticket.<br /><br />
-						Didn't get the email? Check your spam folder or <a class="btn-link" style="cursor: pointer;">[Resend Verification Email]</a>.
+						Please download your Event Pass below. You will need to present this QR ticket at the entrance for check-in.
+						<a class="btn-link" @onclick="DownloadPdfTicket" style="cursor: pointer;">[Download Event QR Ticket]</a>.
 					</p>
 				</div>
 			}
@@ -167,12 +168,16 @@
 @code {
 	[Parameter]
 	public Guid Id { get; set; }
-	private bool isSuccess { get; set; } = false;
-	private bool isSubmitting = false;
-	private string userEmail { get; set; } = string.Empty;
 
-	private string errMessage { get; set; } = string.Empty;
-	private string selectErr { get; set; } = string.Empty;
+	public Guid RegistrationId { get; set; }
+	public string RegistrationName { get; set; } = string.Empty;
+
+	private bool isSuccess = false;
+	private bool isSubmitting = false;
+	private string userEmail = string.Empty;
+
+	private string errMessage = string.Empty;
+	private string selectErr = string.Empty;
 
 	private UserEvent? SelectedEvent { get; set; }
 	private List<TicketType> AvailableTickets => SelectedEvent?.TicketTypes?
@@ -184,7 +189,7 @@
 		FullName = string.Empty,
 		Email = string.Empty,
 		Phone = string.Empty,
-		StatusId = 1,
+		StatusId = 2,
 		RegisterDate = DateTime.UtcNow
 	};
 
@@ -223,6 +228,8 @@
 
 			if(res > 0)
 			{
+				RegistrationId = RegisterModel.Id;
+				RegistrationName = RegisterModel.FullName;
 				isSuccess = true;
 				NotificationService.NotifyRegistrationChange(RegisterModel.EventId);
 			}
@@ -233,5 +240,18 @@
 			errMessage = ex.Message;
 			isSubmitting = false;
 		}
+	}
+
+	private async Task DownloadPdfTicket()
+	{
+		// 1. Generate PDF byte array in C#
+		byte[] pdfBytes = PdfService.GenerateTicketPDF(RegistrationId, SelectedEvent!.Name, RegistrationName);
+
+		// 2. Convert bytes to base64 string
+		string base64Pdf = Convert.ToBase64String(pdfBytes);
+
+		// 3. Trigger browser file save
+		var fileName = $"Ticket-{RegistrationId}.pdf";
+		await JS.InvokeVoidAsync("downloadByteArrayFile", base64Pdf, fileName);
 	}
 }

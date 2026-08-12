@@ -1,9 +1,11 @@
 using EMSWebApp.Components;
 using EMSWebApp.Data;
-using EMSWebApp.Services;
 using EMSWebApp.Models;
+using EMSWebApp.Services;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using QuestPDF.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -14,6 +16,10 @@ builder.Services.AddRazorComponents()
 builder.Services.AddCascadingAuthenticationState();
 
 builder.Services.AddSingleton<EventNotificationService>();
+
+QuestPDF.Settings.License = LicenseType.Community;
+builder.Services.AddSingleton<TicketPdfService>();
+
 builder.Services.AddHostedService<EventStatusWorker>();
 
 builder.Services.AddDbContextFactory<AppDbContext>(options =>
@@ -51,6 +57,13 @@ if (!app.Environment.IsDevelopment())
     // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
 }
+
+app.UseForwardedHeaders(new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor |
+                       ForwardedHeaders.XForwardedHost |
+                       ForwardedHeaders.XForwardedProto
+});
 
 app.UseHttpsRedirection();
 

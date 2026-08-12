@@ -14,16 +14,6 @@
 
 @rendermode InteractiveServer
 
-<style>
-	input.valid.modified,
-	.form-control.valid,
-	.valid.modified:not([type=checkbox]) {
-		box-shadow: none;
-		outline-color: transparent;
-	}
-
-</style>
-
 <div data-bs-theme="dark" class="d-flex flex-column min-vh-100 w-100 align-items-center bg-body text-body gap-4">
 	<div class="w-100 d-flex justify-content-center p-3 mb-3" style="background-color: #6A7EFC;">
 		<h5 class="fw-bold">QR Check-In</h5>
@@ -46,16 +36,28 @@
 	{
 		<div class="w-100 d-flex" style="max-width: 27rem;">
 			<div class="card w-100 p-4 rounded-4 gap-3">
-				<div class="card rounded-4 p-4 align-items-center justify-content-center" style="height: 15rem;">
-					<svg xmlns="http://www.w3.org/2000/svg" opacity="60%" width="80" height="80" fill="currentColor" class="bi bi-qr-code-scan" viewBox="0 0 16 16">
-						<path d="M0 .5A.5.5 0 0 1 .5 0h3a.5.5 0 0 1 0 1H1v2.5a.5.5 0 0 1-1 0zm12 0a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 .5.5v3a.5.5 0 0 1-1 0V1h-2.5a.5.5 0 0 1-.5-.5M.5 12a.5.5 0 0 1 .5.5V15h2.5a.5.5 0 0 1 0 1h-3a.5.5 0 0 1-.5-.5v-3a.5.5 0 0 1 .5-.5m15 0a.5.5 0 0 1 .5.5v3a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1 0-1H15v-2.5a.5.5 0 0 1 .5-.5M4 4h1v1H4z" />
-						<path d="M7 2H2v5h5zM3 3h3v3H3zm2 8H4v1h1z" />
-						<path d="M7 9H2v5h5zm-4 1h3v3H3zm8-6h1v1h-1z" />
-						<path d="M9 2h5v5H9zm1 1v3h3V3zM8 8v2h1v1H8v1h2v-2h1v2h1v-1h2v-1h-3V8zm2 2H9V9h1zm4 2h-1v1h-2v1h3zm-4 2v-1H8v1z" />
-						<path d="M12 9h2V8h-2z" />
-					</svg>
+				<div class="card rounded-4 align-items-center justify-content-center overflow-hidden" style="height: 15rem;">
+					<div class="w-100 h-100 @(isScanned ? "d-none" : "d-flex align-items-center justify-content-center")" style="max-height:100%; max-width:100%;">
+						<Scanner CodeFound="CodeFound" @ref="_scannerRef" AutoStart="true"/>
+					</div>
+					@if (isScanned && isScannedSuccess)
+					{
+						<svg xmlns="http://www.w3.org/2000/svg" color="#0eb557" width="85" height="85" fill="currentColor" class="bi bi-check2-square" viewBox="0 0 16 16">
+							<path d="M3 14.5A1.5 1.5 0 0 1 1.5 13V3A1.5 1.5 0 0 1 3 1.5h8a.5.5 0 0 1 0 1H3a.5.5 0 0 0-.5.5v10a.5.5 0 0 0 .5.5h10a.5.5 0 0 0 .5-.5V8a.5.5 0 0 1 1 0v5a1.5 1.5 0 0 1-1.5 1.5z" />
+							<path d="m8.354 10.354 7-7a.5.5 0 0 0-.708-.708L8 9.293 5.354 6.646a.5.5 0 1 0-.708.708l3 3a.5.5 0 0 0 .708 0" />
+						</svg>
+						<p>Checked-in Successfully</p>
+					}
+					else if (isScanned && !isScannedSuccess)
+					{
+						<svg xmlns="http://www.w3.org/2000/svg" color="#c41616" width="85" height="85" fill="currentColor" class="bi bi-x-square" viewBox="0 0 16 16">
+							<path d="M14 1a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1zM2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2z" />
+							<path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708" />
+						</svg>
+						<p>Check-in Invalid</p>
+					}
 				</div>
-				<p class="text-center text-muted" style="font-size: .86rem;">QR scanning will be implemented once other functionality and qr maker is implemented</p>
+				<button class="btn btn-primary" @onclick="scanStart">Rescan</button>
 			</div>
 		</div>
 
@@ -70,7 +72,7 @@
 						</div>
 						@if (!string.IsNullOrEmpty(statusMessage))
 						{
-							<p class="alert @(isErr ? "alert-danger" : "alert-success") py-1 mt-1">@statusMessage</p>
+							<p class="alert @(isErr ? "alert-danger" : "alert-success") py-2 mt-2 text-center px-2">@statusMessage</p>
 						}
 					</EditForm>
 				</div>
@@ -87,6 +89,10 @@
 	private string? sysErr;
 	private List<UserEvent> userEvents = new();
 	private List<Registered> registerUser = new();
+	private Scanner _scannerRef = default!;
+	private string _code = string.Empty;
+	private bool isScanned = false;
+	private bool isScannedSuccess = false;
 
 	protected override async Task OnInitializedAsync()
 	{
@@ -107,7 +113,7 @@
 			if(registration?.StatusId == 4)
 			{
 				isErr = true;
-				statusMessage = $"User already checked-in at {registration.CheckInDate?.ToLocalTime().ToString("hh:mm tt")}";
+				statusMessage = $"{registration.FullName} already checked-in at {registration.CheckInDate?.ToLocalTime().ToString("hh:mm tt")}";
 				return;
 			}
 			if (registration == null)
@@ -122,10 +128,13 @@
 				registration.StatusId = 4;
 				registration.CheckInDate = DateTime.UtcNow;
 
-				await Db.SaveChangesAsync();
+				var res = await Db.SaveChangesAsync();
 
-				isErr = false;
-				statusMessage = "User successfully checked-in.";
+				if (res > 0)
+				{
+					isErr = false;
+					statusMessage = $"{registration.FullName} successfully checked-in at {registration.CheckInDate.Value.ToLocalTime().ToString("hh:mm tt")}.";
+				}
 
 			}
 			catch(Exception ex)
@@ -147,6 +156,67 @@
 			code = string.Empty
 		};
 		statusMessage = null;
+	}
+
+	private async Task CodeFound(string code)
+	{
+		_code = code;
+		isScanned = true;
+
+		if (Guid.TryParse(code, out Guid scannedId))
+		{
+			var registration = await Db.Registered.Where(r => (r.StatusId == 2 || r.StatusId == 4) && r.UserEvent!.Id == eventSelected).FirstOrDefaultAsync(r => r.Id == scannedId);
+
+			if (registration?.StatusId == 4)
+			{
+				isErr = true;
+				statusMessage = $"{registration.FullName} already checked-in at {registration.CheckInDate?.ToLocalTime().ToString("hh:mm tt")}";
+				return;
+			}
+			if (registration == null)
+			{
+				isErr = true;
+				statusMessage = "Invalid code. Ticket not found.";
+				return;
+			}
+
+			try
+			{
+				registration.StatusId = 4;
+				registration.CheckInDate = DateTime.UtcNow;
+
+				var res = await Db.SaveChangesAsync();
+
+				if (res > 0)
+				{
+					isScannedSuccess = true;
+					isErr = false;
+					statusMessage = $"{registration.FullName} successfully checked-in at {registration.CheckInDate.Value.ToLocalTime().ToString("hh:mm tt")}.";
+				}
+
+			}
+			catch (Exception ex)
+			{
+				sysErr = ex.Message;
+			}
+		}
+		else
+		{
+			isScannedSuccess = false;
+			isErr = true;
+			statusMessage = "Code Invalid.";
+		}
+	}
+
+	private async Task scanStart()
+	{
+		isScanned = false;
+		clearForm();
+
+		if (_scannerRef is not null)
+		{
+			await _scannerRef.Start();
+		}
 	}
 
 	public class QRModel{

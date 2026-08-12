@@ -4,8 +4,11 @@
 @using System.ComponentModel.DataAnnotations
 @using Microsoft.AspNetCore.Identity
 @using EMSWebApp.Models
+@using Microsoft.AspNetCore.Components.Authorization;
+
 @inject SignInManager<AppUser> SignInManager
 @inject NavigationManager NavigationManager
+@inject AuthenticationStateProvider AuthStateProvider
 
 <div class="d-flex justify-content-center align-content-center align-items-center h-100">
     <div class="col-md-4">
@@ -60,12 +63,20 @@
 
     private string? ErrorMessage { get; set; }
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
-        if (HttpContext.User.Identity?.IsAuthenticated == true)
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.Identity?.IsAuthenticated == true)
         {
-            NavigationManager.NavigateTo("/");
+            NavigationManager.NavigateTo("/", replace: true);
         }
+
+        // if (HttpContext.User.Identity?.IsAuthenticated == true)
+        // {
+        //     NavigationManager.NavigateTo("/");
+        // }
     }
 
     private async Task LoginUser()
@@ -91,7 +102,7 @@
                 };
                 await SignInManager.SignInWithClaimsAsync(user, Input.RememberMe, customClaims);
 
-                NavigationManager.NavigateTo("/");
+                NavigationManager.NavigateTo("/", forceLoad: true);
                 return;
             }
         }
