@@ -9,7 +9,6 @@
 @using Microsoft.AspNetCore.Authentication
 @using Microsoft.AspNetCore.Authorization
 
-@inject AppDbContext Db
 @inject EventNotificationService NotificationService
 @inject NavigationManager NavManager
 @inject IWebHostEnvironment Environment
@@ -170,9 +169,11 @@ else
 			@switch (ActiveTab)
 			{
 				case "Overview":
-					<div class="card def-round p-4 gap-3" style="border-radius: .75rem;">
-						<h6>About this event</h6>
-						<p class="text-muted fw-light">@SelectedEvent.Description</p>
+					<div class="d-flex flex-column">
+						<div class="card def-round p-4 gap-3" style="border-radius: .75rem;">
+							<h6>About this event</h6>
+							<p class="text-muted fw-light">@SelectedEvent.Description</p>
+						</div>
 					</div>
 					break;
 
@@ -412,6 +413,8 @@ else
 
 	protected override async Task OnParametersSetAsync()
 	{
+		using var Db = await DbFactory.CreateDbContextAsync();
+
 		await LoadEventData();
 
 		ticketLeft = SelectedEvent?.Capacity ?? 0;
@@ -428,12 +431,14 @@ else
 
 	private async Task LoadCompute()
 	{
+		using var Db = await DbFactory.CreateDbContextAsync();
 		ticketLeft = SelectedEvent?.Capacity ?? 0;
 		ticketLeft -= (int)await Db.TicketType.Where(e => e.EventId == Id).SumAsync(e => e.Quantity);
 	}
 
 	private async Task LoadEventData()
 	{
+		using var Db = await DbFactory.CreateDbContextAsync();
 		SelectedEvent = await Db.UserEvents
 			.AsNoTracking()
 			.Include(e => e.AppUser)
@@ -486,6 +491,8 @@ else
 
 	private async Task UpdateAttendeeStatus(Registered registration,string? newStatusRawId)
 	{
+		using var Db = await DbFactory.CreateDbContextAsync();
+
 		if (int.TryParse(newStatusRawId, out int newStatusId))
 		{
 			try
@@ -597,6 +604,7 @@ else
 
 	private async Task deleteTicket(TicketType t)
 	{
+		using var Db = await DbFactory.CreateDbContextAsync();
 		bool confirmed = await JS.InvokeAsync<bool>("confirm", "Are you sure you want to delete this ticket?");
 
 		if (!confirmed) 
@@ -631,6 +639,7 @@ else
 
 	private async Task DeleteEvent (Guid eventId)
 	{
+		using var Db = await DbFactory.CreateDbContextAsync();
 		bool confirmed = await JS.InvokeAsync<bool>("confirm", "Are you sure you want to delete this Event? ");
 
 		if (!confirmed)
@@ -685,6 +694,7 @@ else
 
 	private async Task MarkComplete()
 	{
+		using var Db = await DbFactory.CreateDbContextAsync();
 		try
 		{
 			var eventupdate = await Db.UserEvents.FindAsync(Id);

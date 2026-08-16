@@ -16,7 +16,7 @@
 @inject AuthenticationStateProvider AuthStateProvider
 @inject NavigationManager NavManager
 
-@inject EMSWebApp.Data.AppDbContext Db
+@inject IDbContextFactory<AppDbContext> DbFactory
 
 @rendermode InteractiveServer
 
@@ -87,8 +87,11 @@
 
 					<div class="col">
 						<label class="form-label">Capacity</label>
-						<InputNumber class="form-control" @bind-Value="EventModel.Capacity" placeholder="Leave blank for default venue capacity"/>
-						<ValidationMessage For="@(() => EventModel.Capacity)" />
+						<InputNumber class="form-control" @bind-Value="EventModel.Capacity" @onblur="ValidateCapacityOnBlur" placeholder="Leave blank for default venue capacity"/>
+						@if (!string.IsNullOrEmpty(capacityErr))
+						{
+							<p class="alert alert-danger py-1 px-2 text-center mt-1 mb-0">@capacityErr</p>
+						}
 					</div>
 				</div>
 
@@ -127,7 +130,7 @@
 				}
 				<div>
 					<label class="form-label">Venue *</label>
-					<InputSelect class="form-select" @bind-Value="EventModel.VenueId">
+					<InputSelect class="form-select" @bind-Value="EventModel.VenueId" @bind-Value:after="ValidateCapacityOnBlur">
 						<option value="">No venue selected</option>
 						@foreach (var ven in venues)
 						{
@@ -154,6 +157,13 @@
 				</div>
 			</div>
 
+			<div class="card p-4 mb-3">
+				<label class="form-check-label">
+					<InputCheckbox class="form-check-input" @bind-Value="test"/>
+					Hide Event Creator
+				</label>
+			</div>
+
 			<div class="d-flex flex-row justify-content-between gap-2">
 				<a class="btn btn-outline-secondary" href="/events">Cancel</a>
 				<div>
@@ -170,7 +180,10 @@
 	private IBrowserFile? selectedFile;
 	private string? previewUrl;
 	private string? sysError { get; set; }
-	private string? dateTimeErr;
+	private string? dateTimeErr = string.Empty;
+	private string? capacityErr = string.Empty;
+
+	private bool test = false;
 
 	private UserEvent EventModel { get; set; } = new UserEvent
 	{
@@ -189,6 +202,7 @@
 	// Load the venues and change the number of venues
 	private async Task LoadVenues()
 	{
+		using var Db = await DbFactory.CreateDbContextAsync();
 		venues = await Db.Venues.AsNoTracking()
 								.OrderBy(e => e.Id)
 								.Where(e => e.Status == VenueStatusEnum.Available)
@@ -232,6 +246,13 @@
 
 	private async Task HandleSubmit()
 	{
+		ValidateCapacityOnBlur();
+
+		if (!string.IsNullOrEmpty(capacityErr) || !string.IsNullOrEmpty(dateTimeErr))
+		{
+			return;
+		}
+
 		if (EventModel.StartDate > EventModel.EndDate)
 		{
 			dateTimeErr = "Start date can't be advance than the end date.";
@@ -323,6 +344,7 @@
 
 		try
 		{
+			using var Db = await DbFactory.CreateDbContextAsync();
 			Db.UserEvents.Add(EventModel);
 			await Db.SaveChangesAsync();
 
@@ -339,4 +361,31 @@
 			return;
 		}
 	}
+
+	private void ValidateCapacityOnBlur()
+	{
+		capacityErr = string.Empty;
+
+		if (EventModel.Capacity == null || EventModel.Capacity == 0)
+		{
+			return;
+		}
+
+		if (EventModel.Capacity < 0)
+		{
+			capacityErr = "Capacity cannot be negative.";
+			return;
+		}
+
+		if (EventModel.VenueId != null && EventModel.VenueId != Guid.Empty)
+		{
+			var chosenVenue = venues.FirstOrDefault(v => v.Id == EventModel.VenueId);
+			if (chosenVenue != null && EventModel.Capacity > chosenVenue.Capacity)
+			{
+				capacityErr = $"Selected venue only supports up to {chosenVenue.Capacity} attendees.";
+			}
+		}
+	}
+
+
 }

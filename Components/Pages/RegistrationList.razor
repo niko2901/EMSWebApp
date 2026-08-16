@@ -9,7 +9,7 @@
 @using Microsoft.AspNetCore.Authentication
 @using Microsoft.AspNetCore.Authorization
 
-@inject AppDbContext Db
+@inject IDbContextFactory<AppDbContext> DbFactory
 
 @rendermode InteractiveServer
 
@@ -100,6 +100,7 @@
 
 	private async Task LoadRegistered()
 	{
+		using var Db = await DbFactory.CreateDbContextAsync();
 		registeredUser = await Db.Registered
 			.Include(e => e.UserEvent)
 			.Include(e => e.TicketType)

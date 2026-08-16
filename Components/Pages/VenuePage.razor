@@ -9,8 +9,8 @@
 @using Microsoft.AspNetCore.Components.Forms
 @using Microsoft.EntityFrameworkCore
 
-@inject EMSWebApp.Data.AppDbContext Db
 @inject IJSRuntime JS
+@inject IDbContextFactory<AppDbContext> DbFactory
 
 @rendermode InteractiveServer
 
@@ -202,11 +202,12 @@
 	// Load the venues and change the number of venues
 	private async Task LoadVenues()
 	{
+		using var Db = await DbFactory.CreateDbContextAsync();
 		venues = await Db.Venues
-						 .AsNoTracking()
-						 .OrderBy(e => e.Id)
-						 .Take(100)
-						 .ToListAsync();
+							.AsNoTracking()
+							.OrderBy(e => e.Id)
+							.Take(100)
+							.ToListAsync();
 		venueCount = venues.Count;
 	}
 
@@ -240,6 +241,7 @@
 
 	private async Task HandleSubmit ()
 	{
+		using var Db = await DbFactory.CreateDbContextAsync();
 		if(isEditMode)
 		{
 			Db.Venues.Update(VenueModel);
@@ -280,6 +282,8 @@
 
 	private async Task DeleteVenue (Guid venueId)
 	{
+		using var Db = await DbFactory.CreateDbContextAsync();
+
 		errorMessage = string.Empty;
 		successMessage = string.Empty;
 

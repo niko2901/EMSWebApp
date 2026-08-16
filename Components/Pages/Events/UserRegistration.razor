@@ -6,11 +6,12 @@
 @using EMSWebApp.Models.ModelEnums
 @using EMSWebApp.Services
 
-@inject EMSWebApp.Data.AppDbContext Db
 @inject EventNotificationService NotificationService
 @inject NavigationManager NavManager
 @inject TicketPdfService PdfService
 @inject IJSRuntime JS
+@inject IDbContextFactory<AppDbContext> DbFactory
+
 
 @rendermode InteractiveServer
 
@@ -137,14 +138,7 @@
 								<InputText class="form-control" @bind-Value="RegisterModel.Phone" id="phone" placeholder="+63 9XX XXX XXXX" maxlength="11" />
 							</div>
 
-							@if (isSubmitting)
-							{
-								<button class="btn btn-primary py-2 fw-bold" style="border-radius: .75rem;" disabled></button>
-							}
-							else
-							{
-								<button type="submit" class="btn btn-primary py-2 fw-bold" style="border-radius: .75rem;">Register Now</button>
-							}
+							<button type="submit" class="btn btn-primary py-2 fw-bold" style="border-radius: .75rem;" disabled="@isSubmitting">@(isSubmitting ? "Submitting..." : "Register Now")</button>
 						</div>
 					</EditForm>
 				</div>
@@ -195,6 +189,8 @@
 
 	protected override async Task OnParametersSetAsync()
 	{
+		using var Db = await DbFactory.CreateDbContextAsync();
+
 		SelectedEvent = await Db.UserEvents
 			.Include(e => e.Venue)
 			.Include(e => e.AppUser)
@@ -210,6 +206,8 @@
 
 	public async Task HandleSubmit()
 	{
+		using var Db = await DbFactory.CreateDbContextAsync();
+
 		isSubmitting = true;
 		RegisterModel.EventId = Id;
 		userEmail = RegisterModel.Email;

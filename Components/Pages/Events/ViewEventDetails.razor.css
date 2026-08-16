@@ -14,17 +14,17 @@
     position: relative;
     transition: color 0.2s ease, border-color 0.2s ease;
     border-bottom: 2px solid transparent;
-    margin-bottom: -1px; /* Aligns perfectly with the border-bottom of the wrapper */
+    margin-bottom: -1px; 
 }
 
     .tab-btn:hover {
-        color: #4f46e5 !important; /* Elegant Indigo/Purple hover transition */
+        color: #4f46e5 !important; 
     }
 
-/* Style for the active tab (Purple text + bottom border line) */
+/* Style for the active tab */
 .tab-active {
-    color: #4f46e5 !important; /* Purple active text */
-    border-bottom: 3px solid #4f46e5 !important; /* Thick bottom highlight bar */
+    color: #4f46e5 !important;
+    border-bottom: 3px solid #4f46e5 !important; 
     font-weight: 600;
 }
 

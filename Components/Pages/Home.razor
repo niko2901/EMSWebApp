@@ -8,7 +8,7 @@
 @using Microsoft.EntityFrameworkCore
 @using EMSWebApp.Models
 @using EMSWebApp.Models.ModelEnums
-@using EMSWebApp.Data
+@using System.Globalization
 
 @inject AppDbContext Db
 @inject NavigationManager NavManager
@@ -128,7 +128,7 @@
 						<div class="col-md-8">
 							<div class="card-body">
 								<h5 class="card-title text-muted">Revenue</h5>
-								<p class="card-text fs-5">₱<strong>@totalRevenue</strong></p>
+								<p class="card-text fw-bold fs-5">@totalRevenue.ToString("C2", phCulture)</p>
 							</div>
 						</div>
 					</div>
@@ -227,6 +227,7 @@
 	private int totalRevenue;
 	private int currentIndex = 0;
 
+	private CultureInfo phCulture = CultureInfo.GetCultureInfo("en-PH");
 	private UserEvent? currentEvent;
 
 	protected override async Task OnInitializedAsync()

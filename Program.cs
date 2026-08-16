@@ -50,6 +50,32 @@ builder.Services.AddControllers();
 
 var app = builder.Build();
 
+app.Use(async (context, next) =>
+{
+    // Tells ngrok to skip the warning page on responses/fetches
+    context.Response.Headers.Append("ngrok-skip-browser-warning", "true");
+    await next();
+});
+
+var forwardedHeadersOptions = new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor |
+                       ForwardedHeaders.XForwardedHost |
+                       ForwardedHeaders.XForwardedProto
+};
+
+forwardedHeadersOptions.KnownNetworks.Clear();
+forwardedHeadersOptions.KnownProxies.Clear();
+
+app.UseForwardedHeaders(forwardedHeadersOptions);
+
+//app.UseForwardedHeaders(new ForwardedHeadersOptions
+//{
+//    ForwardedHeaders = ForwardedHeaders.XForwardedFor |
+//                       ForwardedHeaders.XForwardedHost |
+//                       ForwardedHeaders.XForwardedProto
+//});
+
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {
@@ -58,12 +84,6 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
 }
 
-app.UseForwardedHeaders(new ForwardedHeadersOptions
-{
-    ForwardedHeaders = ForwardedHeaders.XForwardedFor |
-                       ForwardedHeaders.XForwardedHost |
-                       ForwardedHeaders.XForwardedProto
-});
 
 app.UseHttpsRedirection();
 

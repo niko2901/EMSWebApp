@@ -4,8 +4,11 @@
 @using System.ComponentModel.DataAnnotations
 @using Microsoft.AspNetCore.Identity
 @using EMSWebApp.Models
+@using System.Security.Claims
+
 @inject UserManager<AppUser> UserManager
 @inject NavigationManager NavigationManager
+@inject SignInManager<AppUser> SignInManager
 
 <div class="d-flex justify-content-center align-content-center align-items-center h-100">
     <div class="col-md-4">
@@ -89,6 +92,7 @@
         if (result.Succeeded)
         {
             var roleResult = await UserManager.AddToRoleAsync(user, "User");
+            await UserManager.AddClaimAsync(user, new Claim("FullName", user.FullName ?? ""));
 
             if (!roleResult.Succeeded)
             {

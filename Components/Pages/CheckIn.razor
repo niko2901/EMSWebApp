@@ -10,7 +10,7 @@
 @using Microsoft.AspNetCore.Components.Forms
 @using Microsoft.EntityFrameworkCore
 
-@inject AppDbContext Db
+@inject IDbContextFactory<AppDbContext> DbFactory
 
 @rendermode InteractiveServer
 
@@ -96,6 +96,7 @@
 
 	protected override async Task OnInitializedAsync()
 	{
+		using var Db = await DbFactory.CreateDbContextAsync();
 		userEvents = await Db.UserEvents.ToListAsync();
 	}
 
@@ -108,6 +109,7 @@
 
 		if (Guid.TryParse(qrModel.code, out Guid scannedId))
 		{
+			using var Db = await DbFactory.CreateDbContextAsync();
 			var registration = await Db.Registered.Where(r => (r.StatusId == 2 || r.StatusId == 4) && r.UserEvent!.Id == eventSelected).FirstOrDefaultAsync(r => r.Id == scannedId);
 
 			if(registration?.StatusId == 4)
@@ -165,6 +167,7 @@
 
 		if (Guid.TryParse(code, out Guid scannedId))
 		{
+			using var Db = await DbFactory.CreateDbContextAsync();
 			var registration = await Db.Registered.Where(r => (r.StatusId == 2 || r.StatusId == 4) && r.UserEvent!.Id == eventSelected).FirstOrDefaultAsync(r => r.Id == scannedId);
 
 			if (registration?.StatusId == 4)
