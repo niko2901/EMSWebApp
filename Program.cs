@@ -1,6 +1,7 @@
 using EMSWebApp.Components;
 using EMSWebApp.Data;
 using EMSWebApp.Models;
+using EMSWebApp.Models.ModelEnums;
 using EMSWebApp.Services;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
@@ -136,6 +137,28 @@ using (var scope = app.Services.CreateScope())
             // 4. Assign the Admin role to this user
             await userManager.AddToRoleAsync(newAdmin, "Admin");
         }
+    }
+}
+
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    
+    try
+    {
+        var DbFactory = services.GetRequiredService<IDbContextFactory<AppDbContext>>();
+        using var Db = DbFactory.CreateDbContext();
+
+        var now = DateTime.UtcNow;
+
+        await Db.UserEvents
+            .Where(e => e.EndDate < now && e.Status != EventStatusEnum.Completed)
+            .ExecuteUpdateAsync(setter => setter
+                .SetProperty(e => e.Status, EventStatusEnum.Completed));
+    } catch(Exception e)
+    {
+        var logger = services.GetRequiredService<ILogger<Program>>();
+        logger.LogError(e, "Failed to update event status on startup");
     }
 }
 
