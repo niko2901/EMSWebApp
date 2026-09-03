@@ -437,7 +437,7 @@ else
 	private List<RegisterStatus> AllStatus { get; set; } = new();
 	private List<TicketType> Tickets => SelectedEvent?.TicketTypes.ToList() ?? new();
 	private UserEvent? SelectedEvent { get; set; }
-	private Registered? RandomSelectedPerson { get; set; }
+	private Registered? RandomPersons { get; set; }
 
 	public List<Registered> Group1 { get; set; } = new();
 	public List<Registered> Group2 { get; set; } = new();

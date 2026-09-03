@@ -6,6 +6,7 @@ using EMSWebApp.Services;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.VisualBasic;
 using QuestPDF.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -140,6 +141,7 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
+// check if events is over upon start of the system
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
@@ -160,6 +162,14 @@ using (var scope = app.Services.CreateScope())
         var logger = services.GetRequiredService<ILogger<Program>>();
         logger.LogError(e, "Failed to update event status on startup");
     }
+}
+
+using (var scope = app.Services.CreateScope())
+{
+    var Dbfactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<AppDbContext>>();
+    using var db = Dbfactory.CreateDbContext();
+
+    await db.Database.MigrateAsync();
 }
 
 app.Run();

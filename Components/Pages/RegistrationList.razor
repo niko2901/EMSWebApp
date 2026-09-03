@@ -102,6 +102,8 @@
 	{
 		using var Db = await DbFactory.CreateDbContextAsync();
 		registeredUser = await Db.Registered
+			.AsNoTracking()
+			.AsSplitQuery()
 			.Include(e => e.UserEvent)
 			.Include(e => e.TicketType)
 			.Include(e => e.RegisterStatus)

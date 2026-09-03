@@ -16,7 +16,7 @@
 @rendermode InteractiveServer
 
 <div class="w-100 overflow-hidden" style="height: 20rem;">
-	<img src="@SelectedEvent?.StorageUrl" class="h-100 w-100" style="object-fit: cover;"/>
+	<img src="@SelectedEvent?.storageURL" class="h-100 w-100" style="object-fit: cover;"/>
 </div>
 
 
@@ -27,7 +27,7 @@
 		@* condition for checking if the event is still available *@
 		@if (SelectedEvent?.Status != EventStatusEnum.Published)
 		{
-			<div class="card p-4 gap-3 ">
+			<div class="card p-4 gap-3 @(SelectedEvent?.Status != EventStatusEnum.Published ? "d-none" : "")">
 				<h3>Registration for this Event is Now Closed</h3>
 				<p>
 					The sign-up deadline for this event passed on <strong>@SelectedEvent?.RegistrationDeadline</strong>.<br />
@@ -43,25 +43,25 @@
 			</div>
 
 			<div>
-				<h1 class="fw-bold">@SelectedEvent?.Name</h1>
-				<p class="text-muted">Organized by @SelectedEvent?.AppUser?.FullName</p>
+				<h1 class="fw-bold">@SelectedEvent?.Title</h1>
+				<p class="text-muted">Organized by @SelectedEvent?.OrganizerFullName</p>
 			</div>
 
 			<div class="d-flex flex-column gap-4 @(isSuccess ? "d-none" : "")">
 				<div class="d-flex flex-column flex-lg-row gap-1 gap-lg-3">
 					<div class="card p-3 flex-grow-1">
 						<h6 class="text-muted" style="font-weight: 400;">Start</h6>
-						<p style="font-weight: 400; font-size: 16px;">@SelectedEvent?.StartDate?.ToString("dddd, MMM dd \u2022 HH:MM tt")</p>
+						<p style="font-weight: 400; font-size: 16px;">@(SelectedEvent?.StartDate.HasValue == true ? SelectedEvent.StartDate.Value.ToLocalTime().ToString("dddd, MMM dd \u2022 hh:mm tt") : "")</p>
 					</div>
 
 					<div class="card p-3 flex-grow-1">
 						<h6 class="text-muted" style="font-weight: 400;">End</h6>
-						<p style="font-weight: 400; font-size: 16px;">@SelectedEvent?.EndDate?.ToString("dddd, MMM dd \u2022 HH:MM tt")</p>
+						<p style="font-weight: 400; font-size: 16px;">@(SelectedEvent?.EndDate.HasValue == true ? SelectedEvent.EndDate.Value.ToLocalTime().ToString("dddd, MMM dd \u2022 hh:mm tt") : "")</p>
 					</div>
 
 					<div class="card p-3 flex-grow-1">
 						<h6 class="text-muted" style="font-weight: 400;">Location</h6>
-						<p style="font-weight: 400; font-size: 16px;">@SelectedEvent?.Venue?.Name, @SelectedEvent?.Venue?.Address</p>
+						<p style="font-weight: 400; font-size: 16px;">@SelectedEvent?.VenueName, @SelectedEvent?.Location</p>
 					</div>
 				</div>
 
@@ -82,7 +82,7 @@
 
 						@foreach (var item in AvailableTickets)
 						{
-							var ticketRemaining = item.Quantity - item.Registrations.Count;
+							var ticketRemaining = item.Quantity - item.RegistrationsCount;
 							<div class="ticket d-flex flex-row justify-content-between border-bottom py-3 gap-2">
 								<div>
 									<h6>@item.Name</h6>
@@ -151,8 +151,8 @@
 					<h3>🎉 You're registered!</h3>
 					<p>
 						Please download your Event Pass below. You will need to present this QR ticket at the entrance for check-in.
-						<a class="btn-link" @onclick="DownloadPdfTicket" style="cursor: pointer;">[Download Event QR Ticket]</a>.
 					</p>
+					<button class="btn btn-primary" @onclick="DownloadPdfTicket" style="cursor: pointer;">Download Event Ticket</button>.
 				</div>
 			}
 		}
@@ -173,8 +173,8 @@
 	private string errMessage = string.Empty;
 	private string selectErr = string.Empty;
 
-	private UserEvent? SelectedEvent { get; set; }
-	private List<TicketType> AvailableTickets => SelectedEvent?.TicketTypes?
+	private EventDetailsDTO? SelectedEvent { get; set; }
+	private List<TicketTypeDTO> AvailableTickets => SelectedEvent?.TicketTypes?
 																.Where(e => e.Availability == Models.ModelEnums.AvailabilityTypeEnum.Active)
 																.ToList() ?? new();
 
@@ -191,12 +191,45 @@
 	{
 		using var Db = await DbFactory.CreateDbContextAsync();
 
+		// SelectedEvent = await Db.UserEvents
+		// 	.AsNoTracking()
+		// 	.AsSplitQuery()
+		// 	.Include(e => e.Venue)
+		// 	.Include(e => e.AppUser)
+		// 	.Include(e => e.TicketTypes)
+		// 		.ThenInclude(e => e.Registrations)
+		// 	.FirstOrDefaultAsync(e => e.Id == Id);
+
 		SelectedEvent = await Db.UserEvents
-			.Include(e => e.Venue)
-			.Include(e => e.AppUser)
-			.Include(e => e.TicketTypes)
-				.ThenInclude(e => e.Registrations)
-			.FirstOrDefaultAsync(e => e.Id == Id);
+			.Where(e => e.Id == Id)
+			.Select(e => new EventDetailsDTO
+			{
+				storageURL = e.StorageUrl,
+				Status = e.Status,
+				EventType = e.EventType,
+				Title = e.Name,
+				StartDate = e.StartDate,
+				EndDate = e.EndDate,
+				RegistrationDeadline = e.RegistrationDeadline,
+				VenueName = e.Venue!.Name,
+				Location = e.Venue!.Address,
+				Capacity = e.Capacity,
+				Description = e.Description,
+				OrganizerFullName = e.AppUser!.FullName,
+				TicketTypes = e.TicketTypes.Select(t => new TicketTypeDTO
+				{
+					Id = t.Id,
+					Name = t.Name,
+					Description = t.Description,
+					IsFree = t.IsFree,
+					Price = t.Price,
+					Quantity = t.Quantity,
+					Availability = t.Availability,
+					RegistrationsCount = t.Registrations.Count() // Calculated cleanly in SQL database
+				}).ToList()
+			})
+			.FirstOrDefaultAsync();
+
 
 		if (SelectedEvent == null)
 		{
@@ -243,7 +276,7 @@
 	private async Task DownloadPdfTicket()
 	{
 		// 1. Generate PDF byte array in C#
-		byte[] pdfBytes = PdfService.GenerateTicketPDF(RegistrationId, SelectedEvent!.Name, RegistrationName);
+		byte[] pdfBytes = PdfService.GenerateTicketPDF(RegistrationId, SelectedEvent!.Title, RegistrationName);
 
 		// 2. Convert bytes to base64 string
 		string base64Pdf = Convert.ToBase64String(pdfBytes);
@@ -251,5 +284,39 @@
 		// 3. Trigger browser file save
 		var fileName = $"Ticket-{RegistrationId}.pdf";
 		await JS.InvokeVoidAsync("downloadByteArrayFile", base64Pdf, fileName);
+	}
+
+
+	// Data Transfer Object Models
+	public class EventDetailsDTO
+	{
+		public string Title { get; set; } = string.Empty;
+		public string OrganizerFullName { get; set; } = string.Empty;
+		public string? storageURL { get; set; }
+		public string? Description { get; set; }
+		public int? Capacity { get; set; }
+		public string Location { get; set; } = string.Empty;
+		public string VenueName { get; set; } = string.Empty;
+		public DateTime? StartDate { get; set; }
+		public DateTime? EndDate { get; set; }
+		public DateTime? RegistrationDeadline { get; set; }
+		public EventStatusEnum Status { get; set; }
+		public EventTypeEnum EventType { get; set; }
+
+		public List<TicketTypeDTO> TicketTypes { get; set; } = new();
+	}
+
+	public class TicketTypeDTO
+	{
+		public Guid Id { get; set; }
+		public string Name { get; set; } = string.Empty;
+		public string? Description { get; set; }
+		public bool? IsFree { get; set; }
+		public int? Price { get; set; }
+		public int? Quantity { get; set; }
+		public AvailabilityTypeEnum Availability { get; set; }
+
+		// SQL pre-calculates this count instead of downloading individual tracking entities
+		public int RegistrationsCount { get; set; }
 	}
 }
