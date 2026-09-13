@@ -7,6 +7,21 @@ namespace EMSWebApp.Services;
 
 public class TicketPdfService
 {
+    private static readonly SemaphoreSlim _pdfThrottle = new SemaphoreSlim(2, 2);
+
+    public async Task<byte[]> GenerateTicketPDFAsync(Guid registrationId, string eventName, string fullName)
+    {
+        await _pdfThrottle.WaitAsync();
+        try
+        {
+            return await Task.Run(() => GenerateTicketPDF(registrationId, eventName, fullName));
+        }
+        finally
+        {
+            _pdfThrottle.Release();
+        }
+    }
+
     public byte[] GenerateTicketPDF(Guid registrationId, string eventName, string FullName)
     {
         byte[] qrImageBytes = GenerateQrBytes(registrationId.ToString());

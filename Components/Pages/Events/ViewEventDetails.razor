@@ -133,7 +133,7 @@ else
 			<div class="card d-flex flex-column justify-content-center align-items-center flex-grow-1 p-3" style="border-radius: .75rem;">
 
 				<strong style="font-size: 1.5em;">
-					@SelectedEvent.Registrations.Count
+					@RegisterCount
 				</strong>
 
 				<h6 class="text-muted" style="font-size: 0.8em;">
@@ -428,6 +428,7 @@ else
 	private string? errMsg;
 	private string? ticketErr;
 
+	private int RegisterCount;
 	private int eventDurationDays;
 	private int eventDurationHours;
 	private int ticketLeft;
@@ -467,9 +468,9 @@ else
 		using var Db = await DbFactory.CreateDbContextAsync();
 
 		await LoadEventData();
+		await ComputeRegistered();
 
 		ticketLeft = SelectedEvent?.Capacity ?? 0;
-
 		AllStatus = await Db.RegisterStatus.ToListAsync();
 
 		await LoadCompute();
@@ -487,11 +488,22 @@ else
 		ticketLeft -= (int)await Db.TicketType.Where(e => e.EventId == Id).SumAsync(e => e.Quantity);
 	}
 
+	private async Task ComputeRegistered()
+	{
+		using var Db = await DbFactory.CreateDbContextAsync();
+
+		RegisterCount = await Db.Registered
+			.AsNoTracking()
+			.AsSplitQuery()
+			.CountAsync(r => r.EventId == Id);
+	}
+
 	private async Task LoadEventData()
 	{
 		using var Db = await DbFactory.CreateDbContextAsync();
 		SelectedEvent = await Db.UserEvents
 			.AsNoTracking()
+			.AsSplitQuery()
 			.Include(e => e.AppUser)
 			.Include(e => e.Venue)
 			.Include(e => e.Registrations)
@@ -512,7 +524,7 @@ else
 		{
 			await InvokeAsync(async () =>
 			{
-				await LoadEventData();
+				await ComputeRegistered();
 				StateHasChanged();
 			});
 		}

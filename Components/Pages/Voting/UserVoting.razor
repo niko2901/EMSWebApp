@@ -1,0 +1,724 @@
+﻿@page "/voting/vote-registration"
+@layout Layout.EmptyLayout
+
+@using Microsoft.EntityFrameworkCore
+@using System.ComponentModel.DataAnnotations;
+@using EMSWebApp.Data
+@using EMSWebApp.Models
+@using System.Globalization
+
+@inject IDbContextFactory<AppDbContext> DbFactory
+
+@rendermode InteractiveServer
+
+<style>
+	.card {
+		border-radius: 12px;
+	}
+
+	.btn {
+		border-radius: .75rem;
+	}
+
+	.form-check-input:checked {
+		background-color: #0d6efd;
+		border-color: #0d6efd;
+	}
+
+	.form-check-input:focus {
+		border-color: #86b7fe;
+		box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+	}
+</style>
+
+<div class="d-flex flex-column align-items-center" style="min-height: 100vh; background: rgb(248, 250, 252);">
+	@if (!isSuccess)
+	{
+		<EditForm Model="section1Model" OnValidSubmit="nextPage">
+			<DataAnnotationsValidator />
+
+			<div class="d-flex flex-column gap-4 @(page == 0 ? "" : "d-none")" style="max-width: 48rem; padding: 2rem 1rem 2rem 1rem; min-height: 100%;">
+				<div class="card p-4">
+					<label class="form-label">Name:</label>
+					<InputText class="form-control" @bind-Value="section1Model.Name" />
+				</div>
+
+				<div class="card p-4 gap-3">
+					<h4 class="fw-bold">Membership Fee Survey</h4>
+
+					<div class="d-flex flex-column">
+						<label class="form-label d-block fw-semibold mb-2">
+							1. Do you agree to pay the membership fee of @(MerchPrices?.Find(m => m.Item == "Membership Fee")?.Price.ToString("C2", phCulture)) per semester for the 1st and 2nd semesters of Academic Year 2026–2027?
+						</label>
+
+						<InputRadioGroup @bind-Value="section1Model.MFeeQ1" Name="page1Q1">
+							<div class="form-check form-check-inline">
+								<InputRadio class="form-check-input" id="q1Yes" Value="@(1)" />
+								<label class="form-check-label" for="q1Yes">
+									Yes, I agree
+								</label>
+							</div>
+
+							<div class="form-check form-check-inline">
+								<InputRadio class="form-check-input" id="q1No" Value="@(0)" />
+								<label class="form-check-label" for="q1No">
+									No, I do not agree
+								</label>
+							</div>
+						</InputRadioGroup>
+						<ValidationMessage class="alert alert-danger px-2 py-1 my-1 rounded" For="@(() => section1Model.MFeeQ1)" />
+					</div>
+
+					<div class="d-flex flex-column">
+						<label class="form-label d-block fw-semibold mb-2">
+							2. Do you agree that the collected membership fees will be used to support the organization’s proposed plans, programs, and activities for Academic Year 2026–2027?
+						</label>
+
+						<InputRadioGroup @bind-Value="section1Model.MFeeQ2" Name="page1Q2">
+							<div class="form-check form-check-inline">
+								<InputRadio class="form-check-input" id="q2Yes" Value="@(1)" />
+								<label class="form-check-label" for="q2Yes">
+									Yes, I agree
+								</label>
+							</div>
+
+							<div class="form-check form-check-inline">
+								<InputRadio class="form-check-input" id="q2No" Value="@(0)" />
+								<label class="form-check-label" for="q2No">
+									No, I do not agree
+								</label>
+							</div>
+						</InputRadioGroup>
+						<ValidationMessage class="alert alert-danger px-2 py-1 my-1 rounded" For="@(() => section1Model.MFeeQ2)" />
+					</div>
+				</div>
+				<div>
+					<button type="submit" class="btn btn-secondary">Next</button>
+				</div>
+			</div>
+		</EditForm>
+
+		@* PAGE 2 *@
+		<div class="d-flex flex-column gap-3  @(page == 1 ? "" : "d-none")" style="max-width: 48rem; padding: 2rem 1rem 2rem 1rem; min-height: 100%;">
+			<div class="card p-4">
+				<h4 class="fw-bold">Merch Survey</h4>
+			</div>
+
+			<EditForm Model="section2Model" OnValidSubmit="nextPage" class="d-flex flex-column gap-3">
+				<DataAnnotationsValidator />
+
+				<div class="card p-4 gap-3">
+					<h5 class="fw-bold">Wind Breaker</h5> @* WINDBREAKER *@
+					<div class="d-flex flex-column">
+						<label class="form-label d-block fw-semibold mb-2">
+							1. Do you approve the proposed Design Layout for the Official CO:DE Wind Breaker merchandise?
+						</label>
+
+						<InputRadioGroup @bind-Value="section2Model.WindQ1" Name="page2Q1">
+							<div class="form-check form-check-inline">
+								<InputRadio class="form-check-input" id="q1s1Yes" Value="@(1)" />
+								<label class="form-check-label" for="q1s1Yes">
+									Yes, I approve
+								</label>
+							</div>
+
+							<div class="form-check form-check-inline">
+								<InputRadio class="form-check-input" id="q1s1No" Value="@(0)" />
+								<label class="form-check-label" for="q1s1No">
+									No, I do not approve
+								</label>
+							</div>
+						</InputRadioGroup>
+					</div>
+
+					<div class="d-flex flex-column">
+						<label class="form-label d-block fw-semibold mb-2">
+							2. Do you approve the proposed price of @(MerchPrices?.Find(m => m.Item == "Wind Breaker")?.Price.ToString("C2", phCulture)) for the Official CO:DE Wind Breaker Merchandise?
+						</label>
+						<InputRadioGroup @bind-Value="section2Model.WindQ2" Name="page2Q2">
+							<div class="form-check form-check-inline">
+								<InputRadio class="form-check-input" id="q2s1Yes" Value="@(1)" />
+								<label class="form-check-label" for="q2s1Yes">
+									Yes, I approve
+								</label>
+							</div>
+
+							<div class="form-check form-check-inline">
+								<InputRadio class="form-check-input" id="q2s1No" Value="@(0)" />
+								<label class="form-check-label" for="q2s1No">
+									No, I do not approve
+								</label>
+							</div>
+						</InputRadioGroup>
+					</div>
+				</div>
+
+				<div class="card p-4 gap-3">
+					<h5 class="fw-bold">Hoodie</h5> @* HOODIE *@
+					<div class="d-flex flex-column">
+						<label class="form-label d-block fw-semibold mb-2">
+							1. Do you approve the proposed Design Layout for the Official CO:DE Hoodie merchandise?
+						</label>
+
+						<InputRadioGroup @bind-Value="section2Model.HoodieQ1" Name="page2Q3">
+							<div class="form-check form-check-inline">
+								<InputRadio class="form-check-input" id="q1s2Yes" Value="@(1)" />
+								<label class="form-check-label" for="q1s2Yes">
+									Yes, I approve
+								</label>
+							</div>
+
+							<div class="form-check form-check-inline">
+								<InputRadio class="form-check-input" id="q1s2No" Value="@(0)" />
+								<label class="form-check-label" for="q1s2No">
+									No, I do not approve
+								</label>
+							</div>
+						</InputRadioGroup>
+					</div>
+
+					<div class="d-flex flex-column">
+						<label class="form-label d-block fw-semibold mb-2">
+							2. Do you approve the proposed price of @(MerchPrices?.Find(m => m.Item == "Hoodie")?.Price.ToString("C2", phCulture)) for the Official CO:DE Hoodie Merchandise?
+						</label>
+
+						<InputRadioGroup @bind-Value="section2Model.HoodieQ2" Name="page2Q4">
+							<div class="form-check form-check-inline">
+								<InputRadio class="form-check-input" id="q2s2Yes" Value="@(1)" />
+								<label class="form-check-label" for="q2s2Yes">
+									Yes, I approve
+								</label>
+							</div>
+
+							<div class="form-check form-check-inline">
+								<InputRadio class="form-check-input" id="q2s2No" Value="@(0)" />
+								<label class="form-check-label" for="q2s2No">
+									No, I do not approve
+								</label>
+							</div>
+						</InputRadioGroup>
+					</div>
+				</div>
+
+				<div class="card p-4 gap-3">
+					<h5 class="fw-bold">T-shirt</h5> @* T-SHIRT *@
+					<div class="d-flex flex-column">
+						<label class="form-label d-block fw-semibold mb-2">
+							1. Do you approve the Design Layout for the Official CO:DE T-shirt Merchandise?
+						</label>
+
+						<InputRadioGroup @bind-Value="section2Model.TshirtQ1" Name="page2Q5">
+							<div class="form-check form-check-inline">
+								<InputRadio class="form-check-input" id="q1s3Yes" Value="@(1)" />
+								<label class="form-check-label" for="q1s3Yes">
+									Yes, I approve
+								</label>
+							</div>
+
+							<div class="form-check form-check-inline">
+								<InputRadio class="form-check-input" id="q1s3No" Value="@(0)" />
+								<label class="form-check-label" for="q1s3No">
+									No, I do not approve
+								</label>
+							</div>
+						</InputRadioGroup>
+					</div>
+
+					<div class="d-flex flex-column">
+						<label class="form-label d-block fw-semibold mb-2">
+							2. Do you approve the proposed price of @(MerchPrices?.Find(m => m.Item == "T-shirt")?.Price.ToString("C2", phCulture)) for the Official CO:DE Hoodie Merchandise?
+						</label>
+
+						<InputRadioGroup @bind-Value="section2Model.TshirtQ2" Name="page2Q6">
+							<div class="form-check form-check-inline">
+								<InputRadio class="form-check-input" id="q2s3Yes" Value="@(1)" />
+								<label class="form-check-label" for="q2s3Yes">
+									Yes, I approve
+								</label>
+							</div>
+
+							<div class="form-check form-check-inline">
+								<InputRadio class="form-check-input" id="q2s3No" Value="@(0)" />
+								<label class="form-check-label" for="q2s3No">
+									No, I do not approve
+								</label>
+							</div>
+						</InputRadioGroup>
+					</div>
+				</div>
+
+				<div class="card p-4 gap-3">
+					<h5 class="fw-bold">Polo Shirt (Dry Fit)</h5> @* POLO SHIRT *@
+					<div class="d-flex flex-column">
+						<label class="form-label d-block fw-semibold mb-2">
+							1. Do you approve the Design Layout for the Official CO:DE Polo Shirt (Dry Fit) Merchandise?
+						</label>
+
+						<InputRadioGroup @bind-Value="section2Model.PoloShirtQ1" Name="page2Q7">
+							<div class="form-check form-check-inline">
+								<InputRadio class="form-check-input" id="q1s4Yes" Value="@(1)" />
+								<label class="form-check-label" for="q1s4Yes">
+									Yes, I approve
+								</label>
+							</div>
+
+							<div class="form-check form-check-inline">
+								<InputRadio class="form-check-input" id="q1s4No" Value="@(0)" />
+								<label class="form-check-label" for="q1s4No">
+									No, I do not approve
+								</label>
+							</div>
+						</InputRadioGroup>
+					</div>
+
+					<div class="d-flex flex-column">
+						<label class="form-label d-block fw-semibold mb-2">
+							2. Do you approve the proposed price of @(MerchPrices?.Find(m => m.Item == "Polo Shirt")?.Price.ToString("C2", phCulture)) for the Official CO:DE Polo Shirt (Dry Fit) Merchandise?
+						</label>
+
+						<InputRadioGroup @bind-Value="section2Model.PoloShirtQ2" Name="page2Q8">
+							<div class="form-check form-check-inline">
+								<InputRadio class="form-check-input" id="q2s4Yes" Value="@(1)" />
+								<label class="form-check-label" for="q2s4Yes">
+									Yes, I approve
+								</label>
+							</div>
+
+							<div class="form-check form-check-inline">
+								<InputRadio class="form-check-input" id="q2s4No" Value="@(0)" />
+								<label class="form-check-label" for="q2s4No">
+									No, I do not approve
+								</label>
+							</div>
+						</InputRadioGroup>
+					</div>
+				</div>
+
+				<div class="card p-4 gap-3">
+					<h5 class="fw-bold">ID Lanyard - Not Reversible</h5> @* ID LANYARD – NOT REVERSIBLE *@
+					<div class="d-flex flex-column">
+						<label class="form-label d-block fw-semibold mb-2">
+							1. Do you approve the proposed design layout for the Official CO:DE ID Lanyard (not reversible) Merchandise?
+						</label>
+
+						<InputRadioGroup @bind-Value="section2Model.IdnonRevQ1" Name="page2Q9">
+							<div class="form-check form-check-inline">
+								<InputRadio class="form-check-input" id="q1s5Yes" Value="@(1)" />
+								<label class="form-check-label" for="q1s5Yes">
+									Yes, I approve
+								</label>
+							</div>
+
+							<div class="form-check form-check-inline">
+								<InputRadio class="form-check-input" id="q1s5No" Value="@(0)" />
+								<label class="form-check-label" for="q1s5No">
+									No, I do not approve
+								</label>
+							</div>
+						</InputRadioGroup>
+					</div>
+
+					<div class="d-flex flex-column">
+						<label class="form-label d-block fw-semibold mb-2">
+							2. Do you approve the proposed price of @(MerchPrices?.Find(m => m.Item == "ID Non-Reversible")?.Price.ToString("C2", phCulture)) for the Official CO:DE ID Lanyard (not reversible) Merchandise5
+						</label>
+
+						<InputRadioGroup @bind-Value="section2Model.IdnonRevQ2" Name="page2Q10">
+							<div class="form-check form-check-inline">
+								<InputRadio class="form-check-input" id="q2s5Yes" Value="@(1)" />
+								<label class="form-check-label" for="q2s5Yes">
+									Yes, I approve
+								</label>
+							</div>
+
+							<div class="form-check form-check-inline">
+								<InputRadio class="form-check-input" id="q2s5No" Value="@(0)" />
+								<label class="form-check-label" for="q2s5No">
+									No, I do not approve
+								</label>
+							</div>
+						</InputRadioGroup>
+					</div>
+				</div>
+
+				<div class="card p-4 gap-3">
+					<h5 class="fw-bold">ID Lanyard - Reversible</h5> @* ID LANYARD – REVERSIBLE *@
+					<div class="d-flex flex-column">
+						<label class="form-label d-block fw-semibold mb-2">
+							1. Do you approve the proposed design layout for the Official CO:DE ID Lanyard (Reversible) Merchandise?
+						</label>
+
+						<InputRadioGroup @bind-Value="section2Model.IdRevQ1" Name="page2Q11">
+							<div class="form-check form-check-inline">
+								<InputRadio class="form-check-input" id="q1s6Yes" Value="@(1)" />
+								<label class="form-check-label" for="q1s6Yes">
+									Yes, I approve
+								</label>
+							</div>
+
+							<div class="form-check form-check-inline">
+								<InputRadio class="form-check-input" id="q1s6No" Value="@(0)" />
+								<label class="form-check-label" for="q1s6No">
+									No, I do not approve
+								</label>
+							</div>
+						</InputRadioGroup>
+					</div>
+
+					<div class="d-flex flex-column">
+						<label class="form-label d-block fw-semibold mb-2">
+							2. Do you approve the proposed price of @(MerchPrices?.Find(m => m.Item == "ID Reversible")?.Price.ToString("C2", phCulture)) for the Official CO:DE ID Lanyard (Reversible) Merchandise?
+						</label>
+
+						<InputRadioGroup @bind-Value="section2Model.IdRevQ2" Name="page2Q12">
+							<div class="form-check form-check-inline">
+								<InputRadio class="form-check-input" id="q2s6Yes" Value="@(1)" />
+								<label class="form-check-label" for="q2s6Yes">
+									Yes, I approve
+								</label>
+							</div>
+
+							<div class="form-check form-check-inline">
+								<InputRadio class="form-check-input" id="q2s6No" Value="@(0)" />
+								<label class="form-check-label" for="q2s6No">
+									No, I do not approve
+								</label>
+							</div>
+						</InputRadioGroup>
+					</div>
+				</div>
+
+				<div class="card p-4 gap-3">
+					<h5 class="fw-bold">Mouse Pad</h5> @* MOUSE PAD *@
+					<div class="d-flex flex-column">
+						<label class="form-label d-block fw-semibold mb-2">
+							1. Do you approve the proposed design layout for the Official CO:DE Mouse Pad Merchandise?
+						</label>
+
+						<InputRadioGroup @bind-Value="section2Model.MousePadQ1" Name="page2Q13">
+							<div class="form-check form-check-inline">
+								<InputRadio class="form-check-input" id="q1s7Yes" Value="@(1)" />
+								<label class="form-check-label" for="q1s7Yes">
+									Yes, I approve
+								</label>
+							</div>
+
+							<div class="form-check form-check-inline">
+								<InputRadio class="form-check-input" id="q1s7No" Value="@(0)" />
+								<label class="form-check-label" for="q1s7No">
+									No, I do not approve
+								</label>
+							</div>
+						</InputRadioGroup>
+					</div>
+
+					<div class="d-flex flex-column">
+						<label class="form-label d-block fw-semibold mb-2">
+							2. Do you approve the proposed price of @(MerchPrices?.Find(m => m.Item == "Mouse Pad")?.Price.ToString("C2", phCulture)) for the Official CO:DE Mouse Pad Merchandise?
+						</label>
+
+						<InputRadioGroup @bind-Value="section2Model.MousePadQ2" Name="page2Q14">
+							<div class="form-check form-check-inline">
+								<InputRadio class="form-check-input" id="q2s7Yes" Value="@(1)" />
+								<label class="form-check-label" for="q2s7Yes">
+									Yes, I approve
+								</label>
+							</div>
+
+							<div class="form-check form-check-inline">
+								<InputRadio class="form-check-input" id="q2s7No" Value="@(0)" />
+								<label class="form-check-label" for="q2s7No">
+									No, I do not approve
+								</label>
+							</div>
+						</InputRadioGroup>
+					</div>
+				</div>
+
+				<div class="card p-4 gap-3">
+					<h5 class="fw-bold">Cap (Embroidered)</h5> @* CAP (EMBROIDERED) *@
+					<div class="d-flex flex-column">
+						<label class="form-label d-block fw-semibold mb-2">
+							1. Do you approve the propo8ed design layout for the Official CO:DE Cap (Embroidered) Merchandise?
+						</label>
+
+						<InputRadioGroup @bind-Value="section2Model.CapQ1" Name="page2Q15">
+							<div class="form-check form-check-inline">
+								<InputRadio class="form-check-input" id="q1s8Yes" Value="@(1)" />
+								<label class="form-check-label" for="q1s8Yes">
+									Yes, I approve
+								</label>
+							</div>
+
+							<div class="form-check form-check-inline">
+								<InputRadio class="form-check-input" id="q1s8No" Value="@(0)" />
+								<label class="form-check-label" for="q1s8No">
+									No, I do not approve
+								</label>
+							</div>
+						</InputRadioGroup>
+					</div>
+
+					<div class="d-flex flex-column">
+						<label class="form-label d-block fw-semibold mb-2">
+							2. Do you approve the proposed price of @(MerchPrices?.Find(m => m.Item == "Cap")?.Price.ToString("C2", phCulture)) for the Official CO:DE Cap (Embroidered) Merchandise?
+						</label>
+
+						<InputRadioGroup @bind-Value="section2Model.CapQ2" Name="page2Q16">
+							<div class="form-check form-check-inline">
+								<InputRadio class="form-check-input" id="q2s8Yes" Value="@(1)" />
+								<label class="form-check-label" for="q2s8Yes">
+									Yes, I approve
+								</label>
+							</div>
+
+							<div class="form-check form-check-inline">
+								<InputRadio class="form-check-input" id="q2s8No" Value="@(0)" />
+								<label class="form-check-label" for="q2s8No">
+									No, I do not approve
+								</label>
+							</div>
+						</InputRadioGroup>
+					</div>
+				</div>
+
+				<div>
+					<button type="button" class="btn btn-outline-secondary" @onclick="prevPage">Back</button>
+					<button type="submit" class="btn btn-secondary">Next</button>
+				</div>
+			</EditForm>
+		</div>
+
+		@* PAGE 3 *@
+		<div class="d-flex flex-column gap-4  @(page == 2 ? "" : "d-none")" style="max-width: 48rem; padding: 2rem 1rem 2rem 1rem; min-height: 100%;">
+			<EditForm Model="section3Model" OnValidSubmit="HandleSubmit" class="d-flex flex-column gap-3">
+				<div class="card p-4 gap-3">
+					<h4 class="fw-bold">CBL Amendment Survey</h4>
+
+					<div class="d-flex flex-column">
+						<label class="form-label d-block fw-semibold mb-2">
+							1. Do you agree with the proposed new rules and regulations in the CBL?
+						</label>
+
+						<InputRadioGroup @bind-Value="section3Model.CBLQ1" Name="page3Q1">
+							<div class="form-check form-check-inline">
+								<InputRadio class="form-check-input" id="q1p3Yes" Value="@(1)" />
+								<label class="form-check-label" for="q1p3Yes">
+									Yes
+								</label>
+							</div>
+
+							<div class="form-check form-check-inline">
+								<InputRadio class="form-check-input" id="q1p3No" Value="@(0)" />
+								<label class="form-check-label" for="q1p3No">
+									No
+								</label>
+							</div>
+						</InputRadioGroup>
+					</div>
+
+					<div class="d-flex flex-column">
+						<label class="form-label d-block fw-semibold mb-2">
+							2. Do you agree with the proposed changes to the officers’ roles, responsibilities, and positions in the CBL?
+						</label>
+
+						<InputRadioGroup @bind-Value="section3Model.CBLQ2" Name="page3Q2">
+							<div class="form-check form-check-inline">
+								<InputRadio class="form-check-input" id="q2p3Yes" Value="@(1)" />
+								<label class="form-check-label" for="q2p3Yes">
+									Yes
+								</label>
+							</div>
+
+							<div class="form-check form-check-inline">
+								<InputRadio class="form-check-input" id="q2p3No" Value="@(0)" />
+								<label class="form-check-label" for="q2p3No">
+									No
+								</label>
+							</div>
+						</InputRadioGroup>
+					</div>
+				</div>
+
+				<div>
+					<button type="button" class="btn btn-outline-secondary" @onclick="prevPage">back</button>
+					<button type="submit" class="btn btn-primary">Submit</button>
+				</div>
+			</EditForm>
+		</div>
+	}
+	else {
+		<div class="d-flex flex-column gap-4" style="max-width: 48rem; padding: 2rem 1rem 2rem 1rem; min-height: 100%;">
+			<div class="card p-4 gap-3">
+				<h3>Thank you for completing our survey!</h3>
+				<p>We appreciate you taking the time to share your feedback. Your insights are incredibly valuable to us and will be used directly to improve our service.</p>
+			</div>
+		</div>
+	}
+</div>
+
+@code {
+	private int page = 0;
+	private string? errmsg;
+	private bool isSuccess = false;
+
+	private CultureInfo phCulture = CultureInfo.GetCultureInfo("en-PH");
+
+	private Section1 section1Model = new Section1();
+	private Section2 section2Model = new Section2();
+	private Section3 section3Model = new Section3();
+
+	private Vote? voteModel;
+
+	private List<MerchPrice>? MerchPrices;
+
+	protected override async Task OnInitializedAsync()
+	{
+		using var Db = await DbFactory.CreateDbContextAsync();
+
+		MerchPrices = await Db.MerchPrices
+			.AsNoTracking()
+			.AsSplitQuery()
+			.ToListAsync();
+	}
+
+	private async Task HandleSubmit()
+	{
+		try
+		{
+			using var Db = await DbFactory.CreateDbContextAsync();
+
+			voteModel = new Vote
+			{
+				Name = section1Model.Name,
+				MFeeQ1 = section1Model.MFeeQ1,
+				MFeeQ2 = section1Model.MFeeQ2,
+
+				WindQ1 = section2Model.WindQ1,
+				WindQ2 = section2Model.WindQ2,
+
+				HoodieQ1 = section2Model.HoodieQ1,
+				HoodieQ2 = section2Model.HoodieQ2,
+
+				TshirtQ1 = section2Model.TshirtQ1,
+				TshirtQ2 = section2Model.TshirtQ2,
+
+				PoloShirtQ1 = section2Model.PoloShirtQ1,
+				PoloShirtQ2 = section2Model.PoloShirtQ2,
+
+				IdnonRevQ1 = section2Model.IdnonRevQ1,
+				IdnonRevQ2 = section2Model.IdnonRevQ2,
+
+				IdRevQ1 = section2Model.IdRevQ1,
+				IdRevQ2 = section2Model.IdRevQ2,
+
+				MousePadQ1 = section2Model.MousePadQ1,
+				MousePadQ2 = section2Model.MousePadQ2,
+
+				CapQ1 = section2Model.CapQ1,
+				CapQ2 = section2Model.CapQ2,
+
+				CBLQ1 = section3Model.CBLQ1,
+				CBLQ2 = section3Model.CBLQ2
+			};
+
+			Db.Votes.Add(voteModel);
+			var res = await Db.SaveChangesAsync();
+
+			if (res > 0)
+			{
+				isSuccess = true;
+			}
+
+		}catch (Exception ex)
+		{
+			errmsg = ex.Message;
+		}
+	}
+
+	private void nextPage()
+	{
+		page++;
+	}
+
+	private void prevPage()
+	{
+		page--;
+	}
+
+	class Section1
+	{
+		public string? Name { get; set; }
+
+		[Required(ErrorMessage = "An answer is required.")]
+		public int? MFeeQ1 { get; set; }
+		[Required(ErrorMessage = "An answer is required.")]
+		public int? MFeeQ2 { get; set; }
+	}
+
+	class Section2
+	{
+		[Required]
+		public int? WindQ1 { get; set; }
+
+		[Required]
+		public int? WindQ2 { get; set; }
+
+		// hoodie
+		[Required]
+		public int? HoodieQ1 { get; set; }
+
+		[Required]
+		public int? HoodieQ2 { get; set; }
+
+		// tshirt
+		[Required]
+		public int? TshirtQ1 { get; set; }
+
+		[Required]
+		public int? TshirtQ2 { get; set; }
+
+		// polo
+		[Required]
+		public int? PoloShirtQ1 { get; set; }
+
+		[Required]
+		public int? PoloShirtQ2 { get; set; }
+
+		// Id nonreversible
+		[Required]
+		public int? IdnonRevQ1 { get; set; }
+
+		[Required]
+		public int? IdnonRevQ2 { get; set; }
+
+		// Id reversible
+		[Required]
+		public int? IdRevQ1 { get; set; }
+
+		[Required]
+		public int? IdRevQ2 { get; set; }
+
+		// Mouse Pad
+		[Required]
+		public int? MousePadQ1 { get; set; }
+
+		[Required]
+		public int? MousePadQ2 { get; set; }
+
+		// Cap
+		[Required]
+		public int? CapQ1 { get; set; }
+
+		[Required]
+		public int? CapQ2 { get; set; }
+	}
+
+	class Section3
+	{
+		[Required]
+		public int? CBLQ1 { get; set; }
+		[Required]
+		public int? CBLQ2 { get; set; }
+	}
+}

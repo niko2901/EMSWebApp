@@ -1,0 +1,141 @@
+﻿@page "/ticket/{RegistrationId:guid}"
+
+@layout Layout.EmptyLayout
+
+@using Microsoft.EntityFrameworkCore
+@using EMSWebApp.Services
+@using EMSWebApp.Models
+
+@inject TicketPdfService PdfService
+@inject IJSRuntime JS
+@inject IDbContextFactory<AppDbContext> DbFactory
+
+@rendermode InteractiveServer
+
+<style>
+	body, html {
+		background: rgb(248, 250, 252) !important;
+	}
+
+	.card {
+		border-radius: 12px;
+		background: rgb(255 255 255);
+	}
+
+	.ticket:last-child {
+		border-bottom: 0 !important;
+	}
+</style>
+
+@if (IsImageBroken)
+{
+	<div class="d-flex justify-content-center align-items-center w-100" style="height: 20rem; background: #5296FA; ">
+		<svg width="56" height="57" viewBox="0 0 26 27" fill="none" xmlns="http://www.w3.org/2000/svg">
+			<rect x="1" y="2.77777" width="24" height="23" rx="3" stroke="black" stroke-opacity="0.67" stroke-width="2" stroke-miterlimit="1.52425" />
+			<line x1="2" y1="8.88889" x2="24" y2="8.88889" stroke="black" stroke-opacity="0.67" stroke-width="2" stroke-linecap="round" />
+			<line x1="7" y1="1.11111" x2="7" y2="4.44445" stroke="black" stroke-opacity="0.67" stroke-width="2" stroke-linecap="round" />
+			<path d="M19 1V4.55556" stroke="black" stroke-opacity="0.67" stroke-width="2" stroke-linecap="round" />
+		</svg>
+	</div>
+}
+else
+{
+	<img src="@registration?.EventImage" @onerror="Handle404Error" class="w-100" alt="Alternate Text" style="object-fit: cover; height: 20rem;" />
+}
+
+<div class="d-flex justify-content-center" style="background: rgb(248, 250, 252);">
+	<div class="d-flex flex-column gap-4" style="width: 48rem; padding: 2rem 1rem 2rem 1rem; min-height: 100%;">
+		<div class="card p-4 gap-3 ">
+			<h3>🎉 You're all set, @registration?.Name!</h3>
+			<p>
+				Please download your Event Pass below. You will need to present this QR ticket at the entrance for check-in.
+			</p>
+			<button class="btn btn-primary" disabled="@isDownloading" @onclick="DownloadPdfTicket" style="cursor: pointer;">
+				@if (isDownloading)
+				{
+					<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+					<span>Generating Ticket...</span>
+				}
+				else
+				{
+					<i class="bi bi-download"> </i>
+					<span>Download Event Ticket</span>
+				}
+			</button>
+		</div>
+	</div>
+</div>
+
+@code {
+	[Parameter]
+	public Guid RegistrationId { get;set; }
+
+	private RegisteredDTO? registration;
+
+	private bool isDownloading = false;
+	private bool IsImageBroken = false;
+	private bool isGenerated = false;
+	private byte[]? pdfBytes;
+
+	protected override async Task OnInitializedAsync()
+	{
+		using var Db = await DbFactory.CreateDbContextAsync();
+
+		registration = await Db.Registered	
+			.AsNoTracking()
+			.Where(e => e.Id == RegistrationId)
+			.Select(e => new RegisteredDTO
+			{
+				Name = e.FullName,
+				EventTitle = e.UserEvent!.Name,
+				EventImage = e.UserEvent.StorageUrl
+			})
+			.FirstOrDefaultAsync();
+	}
+
+	private void Handle404Error()
+	{
+		IsImageBroken = true;
+	}
+
+	private async Task DownloadPdfTicket()
+	{
+		if (isDownloading || registration == null)
+			return;
+		try
+		{
+			isDownloading = true;
+			await Task.Yield();
+
+			// 1. Generate PDF byte array in C#
+			if (!isGenerated || pdfBytes == null)
+			{
+				pdfBytes = await PdfService.GenerateTicketPDFAsync(RegistrationId, registration!.EventTitle, registration!.Name);
+				isGenerated = true;
+			}
+			// 2. Convert bytes to base64 string
+			string base64Pdf = Convert.ToBase64String(pdfBytes);
+			var fileName = $"Ticket-{RegistrationId}.pdf";
+
+			// Trigger File Download
+			await JS.InvokeVoidAsync("downloadByteArrayFile", base64Pdf, fileName);
+		}
+		catch (Exception ex)
+		{
+			// Reset flag so they can retry if an error occurred during generation
+			isGenerated = false;
+			pdfBytes = null;
+		}
+		finally
+		{
+			isDownloading = false;
+		}
+	}
+
+	public class RegisteredDTO
+	{
+		public string Name { get; set; } = string.Empty;
+		public string EventTitle { get; set; } = string.Empty;
+		public string? EventImage { get; set; }
+	}
+}

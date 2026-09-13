@@ -1,0 +1,128 @@
+﻿@page "/voting"
+@attribute [Authorize]
+
+@using Microsoft.AspNetCore.Authentication
+@using EMSWebApp.Data
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.EntityFrameworkCore
+@using EMSWebApp.Models
+@using System.Globalization
+
+@inject IDbContextFactory<AppDbContext> DbFactory
+
+@rendermode InteractiveServer
+
+<div class="d-flex flex-column w-100 p-4 mt-4" style="max-width: 80rem;">
+	<div class="d-flex justify-content-between align-items-center w-100 mb-3">
+		<div>
+			<h3 class="fw-bold m-0">Vote Page</h3>
+			<p class="text-muted">voted @votedcount</p>
+		</div>
+		<a class="btn btn-outline-primary" href="/voting/vote-registration" target="_blank">Preview</a>
+	</div>
+
+	<div class="overflow-hidden rounded-4">
+		@if (merchPrice == null)
+		{
+			<p>Loading Items...</p>
+		}else
+		{
+			<table class="table align-middle mb-0">
+				<thead>
+					<tr>
+						<th class="px-3">Items</th>
+						<th>Price</th>
+						<th>Action</th>
+					</tr>
+				</thead>
+				<tbody>
+					@foreach (var i in merchPrice)
+					{
+						<tr>
+							<td class="text-muted px-3 py-2">@i.Item</td>
+							<td class="text-muted">@i.Price.ToString("C2", phCulture)</td>
+							<td>
+								<button type="button" class="btn btn-outline-primary" @onclick="() => EditItem(i)">Edit</button>
+							</td>
+						</tr>
+					}
+				</tbody>
+			</table>
+		}
+	</div>
+
+	@if (selectedItem != null)
+	{
+		<div class="position-fixed top-0 start-0 w-100 h-100 bg-dark bg-opacity-50" style="z-index: 1050;">
+			<div class="position-fixed top-50 start-50 translate-middle card" style="min-width: 320px;">
+				<div class="card-body">
+					<h5 class="card-title">Edit @selectedItem.Item</h5>
+
+					<div class="mb-3">
+						<label class="form-label">Price</label>
+						<input type="number" class="form-control" @bind="selectedItem.Price" />
+					</div>
+
+					<div class="d-flex justify-content-end gap-2">
+						<button class="btn btn-secondary" @onclick="CancelEdit">Cancel</button>
+						<button class="btn btn-primary" @onclick="SaveChanges">Save</button>
+					</div>
+				</div>
+			</div>
+		</div>
+	}
+</div>
+
+@code {
+	private List<MerchPrice>? merchPrice;
+	private int votedcount;
+	private CultureInfo phCulture = CultureInfo.GetCultureInfo("en-PH");
+
+	private MerchPrice? selectedItem;
+
+	protected override async Task OnInitializedAsync()
+	{
+		using var Db = await DbFactory.CreateDbContextAsync();
+
+		merchPrice = await Db.MerchPrices
+			.AsNoTracking()
+			.ToListAsync();
+
+		votedcount = await Db.Votes
+		.AsNoTracking()
+		.CountAsync();
+	}
+
+	private void EditItem(MerchPrice item)
+	{
+		selectedItem = new MerchPrice
+		{
+			Id = item.Id,
+			Item = item.Item,
+			Price = item.Price
+		};
+	}
+
+	private void CancelEdit()
+	{
+		selectedItem = null;
+	}
+
+	private async Task SaveChanges()
+	{
+		if (selectedItem == null) return;
+
+		using var Db = await DbFactory.CreateDbContextAsync();
+
+		Db.MerchPrices.Update(selectedItem);
+		await Db.SaveChangesAsync();
+
+		var localItem = merchPrice?.FirstOrDefault(m => m.Id == selectedItem.Id);
+		if (localItem != null)
+		{
+			localItem.Price = selectedItem.Price;
+		}
+
+		selectedItem = null;
+	}
+}

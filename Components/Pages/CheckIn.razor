@@ -19,7 +19,7 @@
 		<h5 class="fw-bold">QR Check-In</h5>
 	</div>
 
-	<div class="w-100 d-flex" style="max-width: 27rem;">
+	<div class="w-100 d-flex px-3" style="max-width: 27rem;">
 		<div class="w-100">
 			<label class="form-label">Select Event</label>
 			<InputSelect @bind-Value="eventSelected" @bind-Value:after="clearForm" class="form-select col-12 rounded-3" >
@@ -34,7 +34,7 @@
 
 	@if(eventSelected != Guid.Empty)
 	{
-		<div class="w-100 d-flex" style="max-width: 27rem;">
+		<div class="w-100 d-flex px-3" style="max-width: 27rem;">
 			<div class="card w-100 p-4 rounded-4 gap-3">
 				<div class="card rounded-4 align-items-center justify-content-center overflow-hidden" style="height: 15rem;">
 					<div class="w-100 h-100 @(isScanned ? "d-none" : "d-flex align-items-center justify-content-center")" style="max-height:100%; max-width:100%;">
@@ -61,7 +61,7 @@
 			</div>
 		</div>
 
-		<div class="w-100" style="max-width: 27rem;">
+		<div class="w-100 px-3" style="max-width: 27rem;">
 			<div class="card rounded-4">
 				<div class="card-body">
 					<EditForm Model="qrModel" OnValidSubmit="HandleSubmit">
@@ -170,7 +170,7 @@
 			using var Db = await DbFactory.CreateDbContextAsync();
 			var registration = await Db.Registered.Where(r => (r.StatusId == 2 || r.StatusId == 4) && r.UserEvent!.Id == eventSelected).FirstOrDefaultAsync(r => r.Id == scannedId);
 
-			if (registration?.StatusId == 4)
+			if (registration?.CheckInDate != null)
 			{
 				isErr = true;
 				statusMessage = $"{registration.FullName} already checked-in at {registration.CheckInDate?.ToLocalTime().ToString("hh:mm tt")}";

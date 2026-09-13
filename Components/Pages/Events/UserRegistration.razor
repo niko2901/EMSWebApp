@@ -15,22 +15,42 @@
 
 @rendermode InteractiveServer
 
-<div class="w-100 overflow-hidden" style="height: 20rem;">
-	<img src="@SelectedEvent?.storageURL" class="h-100 w-100" style="object-fit: cover;"/>
-</div>
-
-
+@if (IsImageBroken)
+{
+	<div class="d-flex justify-content-center align-items-center w-100" style="height: 20rem; background: #5296FA; ">
+		<svg width="56" height="57" viewBox="0 0 26 27" fill="none" xmlns="http://www.w3.org/2000/svg">
+			<rect x="1" y="2.77777" width="24" height="23" rx="3" stroke="black" stroke-opacity="0.67" stroke-width="2" stroke-miterlimit="1.52425" />
+			<line x1="2" y1="8.88889" x2="24" y2="8.88889" stroke="black" stroke-opacity="0.67" stroke-width="2" stroke-linecap="round" />
+			<line x1="7" y1="1.11111" x2="7" y2="4.44445" stroke="black" stroke-opacity="0.67" stroke-width="2" stroke-linecap="round" />
+			<path d="M19 1V4.55556" stroke="black" stroke-opacity="0.67" stroke-width="2" stroke-linecap="round" />
+		</svg>
+	</div>
+}
+else
+{
+	<img src="@SelectedEvent?.storageURL" @onerror="Handle404Error" class="w-100" alt="Alternate Text" style="object-fit: cover; height: 20rem;" />
+}
 
 <div class="d-flex justify-content-center" style="background: rgb(248, 250, 252);">
 	<div class="d-flex flex-column gap-4" style="width: 48rem; padding: 2rem 1rem 2rem 1rem; min-height: 100%;">
 
 		@* condition for checking if the event is still available *@
-		@if (SelectedEvent?.Status != EventStatusEnum.Published)
+		@if(SelectedEvent?.RegistrationStart > DateTime.UtcNow)
 		{
-			<div class="card p-4 gap-3 @(SelectedEvent?.Status != EventStatusEnum.Published ? "d-none" : "")">
+			<div class="card p-4 gap-3">
+				<h3>Registration is Not Yet Open</h3>
+				<p>
+					Sign-ups for this event will begin on <strong>@SelectedEvent?.RegistrationStart.Value.ToLocalTime().ToString("dddd, MMM dd \u2022 hh:mm tt")</strong>.<br />
+					Please check back then to secure your spot!
+				</p>
+			</div>
+		}
+		else if (SelectedEvent?.RegistrationDeadline < DateTime.UtcNow)
+		{
+			<div class="card p-4 gap-3">
 				<h3>Registration for this Event is Now Closed</h3>
 				<p>
-					The sign-up deadline for this event passed on <strong>@SelectedEvent?.RegistrationDeadline</strong>.<br />
+					The sign-up deadline for this event passed on <strong>@SelectedEvent?.RegistrationDeadline.Value.ToLocalTime().ToString("dddd, MMM dd \u2022 hh:mm tt")</strong>.<br />
 					We are busy finalizing details and materials for our attendees and can no longer accept new registrations.
 				</p>
 			</div>
@@ -47,7 +67,7 @@
 				<p class="text-muted">Organized by @SelectedEvent?.OrganizerFullName</p>
 			</div>
 
-			<div class="d-flex flex-column gap-4 @(isSuccess ? "d-none" : "")">
+			<div class="d-flex flex-column gap-4">
 				<div class="d-flex flex-column flex-lg-row gap-1 gap-lg-3">
 					<div class="card p-3 flex-grow-1">
 						<h6 class="text-muted" style="font-weight: 400;">Start</h6>
@@ -102,15 +122,19 @@
 					<EditForm Model="RegisterModel" OnValidSubmit="HandleSubmit">
 						<DataAnnotationsValidator />
 
-						<div class="alert-danger">
-							@errMessage
-						</div>
+						@if (!string.IsNullOrEmpty(errMessage))
+						{
+							<div class="alert alert-danger d-flex justify-content-between align-items-center gap-2">
+								<p>@errMessage</p>
+								<button class="btn btn-close" type="button" @onclick="() => errMessage = string.Empty"></button>
+							</div>
+						}
 
 						<div class="d-flex flex-column gap-3">
 							@if (AvailableTickets.Count != 0)
 							{
 								<div>
-									<label class="form-label">Ticket Type</label>
+									<label class="form-label">Ticket Type *</label>
 									<InputSelect class="form-select" @bind-Value="RegisterModel.TicketTypeId">
 										<option value="@Guid.Empty" selected>- Select Ticket Type -</option>
 										@foreach (var item in AvailableTickets)
@@ -124,8 +148,30 @@
 							}
 
 							<div>
+								<label class="form-label" for="studentId">Student Number *</label>
+								<InputText class="form-control" @bind-Value="RegisterModel.StudentNumber" @onblur="HandleStudentNumber" id="studentId" placeholder="2023XXXXX" />
+								@if (!string.IsNullOrEmpty(studentNumberError))
+								{
+									<div class="alert alert-danger py-2 my-1">
+										@studentNumberError
+									</div>
+								}
+							</div>
+
+							<div>
 								<label class="form-label" for="name">Full Name *</label>
 								<InputText class="form-control" @bind-Value="RegisterModel.FullName" id="name" placeholder="John Dela Cruz" />
+							</div>
+
+							<div>
+								<label class="form-label" for="YearLevel">Year Level *</label>
+								<InputSelect class="form-select" @bind-Value="RegisterModel.YearLevelId">
+									<option value="@(0)" selected>Select Year Level</option>
+									<option value="@(1)">1st Year</option>
+									<option value="@(2)">2nd Year</option>
+									<option value="@(3)">3rd Year</option>
+									<option value="@(4)">4th Year</option>
+								</InputSelect>
 							</div>
 
 							<div>
@@ -138,23 +184,21 @@
 								<InputText class="form-control" @bind-Value="RegisterModel.Phone" id="phone" placeholder="+63 9XX XXX XXXX" maxlength="11" />
 							</div>
 
-							<button type="submit" class="btn btn-primary py-2 fw-bold" style="border-radius: .75rem;" disabled="@isSubmitting">@(isSubmitting ? "Submitting..." : "Register Now")</button>
+							<button type="submit" class="btn btn-primary py-2 fw-bold" style="border-radius: .75rem;" disabled="@isSubmitting">
+								@if (isSubmitting)
+								{
+									<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+									<span>Submitting...</span>
+								}
+								else
+								{
+									<span>Register Now</span>
+								}
+							</button>
 						</div>
 					</EditForm>
 				</div>
 			</div>
-
-			@* show after registration to verify using email. *@
-			@if (isSuccess)
-			{
-				<div class="card p-4 gap-3 ">
-					<h3>🎉 You're registered!</h3>
-					<p>
-						Please download your Event Pass below. You will need to present this QR ticket at the entrance for check-in.
-					</p>
-					<button class="btn btn-primary" @onclick="DownloadPdfTicket" style="cursor: pointer;">Download Event Ticket</button>.
-				</div>
-			}
 		}
 	</div>
 </div>
@@ -166,11 +210,12 @@
 	public Guid RegistrationId { get; set; }
 	public string RegistrationName { get; set; } = string.Empty;
 
-	private bool isSuccess = false;
 	private bool isSubmitting = false;
+	private bool IsImageBroken = false;
 	private string userEmail = string.Empty;
 
-	private string errMessage = string.Empty;
+	private string? errMessage;
+	private string? studentNumberError;
 	private string selectErr = string.Empty;
 
 	private EventDetailsDTO? SelectedEvent { get; set; }
@@ -210,6 +255,7 @@
 				Title = e.Name,
 				StartDate = e.StartDate,
 				EndDate = e.EndDate,
+				RegistrationStart = e.RegistrationStart,
 				RegistrationDeadline = e.RegistrationDeadline,
 				VenueName = e.Venue!.Name,
 				Location = e.Venue!.Address,
@@ -239,21 +285,25 @@
 
 	public async Task HandleSubmit()
 	{
-		using var Db = await DbFactory.CreateDbContextAsync();
+		if (!string.IsNullOrEmpty(studentNumberError) || isSubmitting)
+			return;
 
-		isSubmitting = true;
 		RegisterModel.EventId = Id;
 		userEmail = RegisterModel.Email;
 
 		if (RegisterModel.TicketTypeId == Guid.Empty)
 		{
 			selectErr = "Ticket Type is required.";
-			isSubmitting = false;
 			return;
 		}
 
 		try
 		{
+			using var Db = await DbFactory.CreateDbContextAsync();
+
+			isSubmitting = true;
+			await Task.Yield();
+
 			Db.Registered.Add(RegisterModel);
 			var res = await Db.SaveChangesAsync();
 
@@ -261,8 +311,8 @@
 			{
 				RegistrationId = RegisterModel.Id;
 				RegistrationName = RegisterModel.FullName;
-				isSuccess = true;
 				NotificationService.NotifyRegistrationChange(RegisterModel.EventId);
+				NavManager.NavigateTo($"/ticket/{RegistrationId}");
 			}
 			isSubmitting = false;
 		}
@@ -270,22 +320,53 @@
 		{
 			errMessage = ex.Message;
 			isSubmitting = false;
+			return;
+		}
+		finally
+		{
+			isSubmitting = false;
 		}
 	}
 
-	private async Task DownloadPdfTicket()
+	public async Task HandleStudentNumber()
 	{
-		// 1. Generate PDF byte array in C#
-		byte[] pdfBytes = PdfService.GenerateTicketPDF(RegistrationId, SelectedEvent!.Title, RegistrationName);
+		if (string.IsNullOrWhiteSpace(RegisterModel.StudentNumber))
+		{
+			return;
+		}
 
-		// 2. Convert bytes to base64 string
-		string base64Pdf = Convert.ToBase64String(pdfBytes);
+		string trimmedNumber = RegisterModel.StudentNumber.Trim();
+		RegisterModel.StudentNumber = trimmedNumber;
 
-		// 3. Trigger browser file save
-		var fileName = $"Ticket-{RegistrationId}.pdf";
-		await JS.InvokeVoidAsync("downloadByteArrayFile", base64Pdf, fileName);
+		try
+		{
+			using var Db = await DbFactory.CreateDbContextAsync();
+
+			bool exists = await Db.Registered.AnyAsync(r =>
+				r.EventId == Id &&
+				r.StudentNumber == trimmedNumber
+			);
+
+			if (exists)
+			{
+				studentNumberError = $"Student Number '{trimmedNumber}' is already registered for this event.";
+			}
+			else
+			{
+				studentNumberError = string.Empty;
+			}
+		}
+		catch (Exception ex)
+		{
+			var err = ex.Message;
+			studentNumberError = "Could not verify student number. Please try again.";
+		}
 	}
 
+	private void Handle404Error()
+	{
+		IsImageBroken = true;
+	}
 
 	// Data Transfer Object Models
 	public class EventDetailsDTO
@@ -299,6 +380,7 @@
 		public string VenueName { get; set; } = string.Empty;
 		public DateTime? StartDate { get; set; }
 		public DateTime? EndDate { get; set; }
+		public DateTime? RegistrationStart { get; set; }
 		public DateTime? RegistrationDeadline { get; set; }
 		public EventStatusEnum Status { get; set; }
 		public EventTypeEnum EventType { get; set; }

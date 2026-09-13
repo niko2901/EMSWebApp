@@ -27,6 +27,12 @@ builder.Services.AddHostedService<EventStatusWorker>();
 builder.Services.AddDbContextFactory<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
+builder.Services.AddServerSideBlazor(options =>
+{
+    options.DisconnectedCircuitRetentionPeriod = TimeSpan.FromMinutes(2);
+    options.MaxBufferedUnacknowledgedRenderBatches = 10;
+});
+
 builder.Services.AddIdentity<AppUser, IdentityRole<int>>(options =>
 {
     options.Password.RequireDigit = false;

@@ -98,6 +98,82 @@ namespace EMSWebApp.Migrations
                     b.ToTable("AspNetUsers", (string)null);
                 });
 
+            modelBuilder.Entity("EMSWebApp.Models.MerchPrice", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Item")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<double>("Price")
+                        .HasColumnType("float");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("MerchPrices");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Item = "Membership Fee",
+                            Price = 20.0
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Item = "Wind Breaker",
+                            Price = 1200.0
+                        },
+                        new
+                        {
+                            Id = 3,
+                            Item = "Hoodie",
+                            Price = 290.0
+                        },
+                        new
+                        {
+                            Id = 4,
+                            Item = "T-shirt",
+                            Price = 290.0
+                        },
+                        new
+                        {
+                            Id = 5,
+                            Item = "Polo Shirt",
+                            Price = 290.0
+                        },
+                        new
+                        {
+                            Id = 6,
+                            Item = "ID Non-Reversible",
+                            Price = 85.0
+                        },
+                        new
+                        {
+                            Id = 7,
+                            Item = "ID Reversible",
+                            Price = 120.0
+                        },
+                        new
+                        {
+                            Id = 8,
+                            Item = "Mouse Pad",
+                            Price = 120.0
+                        },
+                        new
+                        {
+                            Id = 9,
+                            Item = "Cap",
+                            Price = 120.0
+                        });
+                });
+
             modelBuilder.Entity("EMSWebApp.Models.RegisterStatus", b =>
                 {
                     b.Property<int>("Id")
@@ -146,6 +222,9 @@ namespace EMSWebApp.Migrations
                     b.Property<DateTime?>("CheckInDate")
                         .HasColumnType("datetime2");
 
+                    b.Property<DateTime?>("CheckInDate2")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("Email")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -169,18 +248,57 @@ namespace EMSWebApp.Migrations
                     b.Property<int>("StatusId")
                         .HasColumnType("int");
 
+                    b.Property<string>("StudentNumber")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
                     b.Property<Guid>("TicketTypeId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.HasKey("Id");
+                    b.Property<int?>("YearLevelId")
+                        .IsRequired()
+                        .HasColumnType("int");
 
-                    b.HasIndex("EventId");
+                    b.HasKey("Id");
 
                     b.HasIndex("StatusId");
 
                     b.HasIndex("TicketTypeId");
 
+                    b.HasIndex("YearLevelId");
+
+                    b.HasIndex("EventId", "StudentNumber")
+                        .IsUnique();
+
                     b.ToTable("Registered");
+                });
+
+            modelBuilder.Entity("EMSWebApp.Models.SystemSettings", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("IsEnabled")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("SystemSettings");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            IsEnabled = false,
+                            Key = "Voting"
+                        });
                 });
 
             modelBuilder.Entity("EMSWebApp.Models.TicketType", b =>
@@ -331,6 +449,139 @@ namespace EMSWebApp.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Venues");
+                });
+
+            modelBuilder.Entity("EMSWebApp.Models.Vote", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int?>("CBLQ1")
+                        .IsRequired()
+                        .HasColumnType("int");
+
+                    b.Property<int?>("CBLQ2")
+                        .IsRequired()
+                        .HasColumnType("int");
+
+                    b.Property<int?>("CapQ1")
+                        .IsRequired()
+                        .HasColumnType("int");
+
+                    b.Property<int?>("CapQ2")
+                        .IsRequired()
+                        .HasColumnType("int");
+
+                    b.Property<int?>("HoodieQ1")
+                        .IsRequired()
+                        .HasColumnType("int");
+
+                    b.Property<int?>("HoodieQ2")
+                        .IsRequired()
+                        .HasColumnType("int");
+
+                    b.Property<int?>("IdRevQ1")
+                        .IsRequired()
+                        .HasColumnType("int");
+
+                    b.Property<int?>("IdRevQ2")
+                        .IsRequired()
+                        .HasColumnType("int");
+
+                    b.Property<int?>("IdnonRevQ1")
+                        .IsRequired()
+                        .HasColumnType("int");
+
+                    b.Property<int?>("IdnonRevQ2")
+                        .IsRequired()
+                        .HasColumnType("int");
+
+                    b.Property<int?>("MFeeQ1")
+                        .IsRequired()
+                        .HasColumnType("int");
+
+                    b.Property<int?>("MFeeQ2")
+                        .IsRequired()
+                        .HasColumnType("int");
+
+                    b.Property<int?>("MousePadQ1")
+                        .IsRequired()
+                        .HasColumnType("int");
+
+                    b.Property<int?>("MousePadQ2")
+                        .IsRequired()
+                        .HasColumnType("int");
+
+                    b.Property<string>("Name")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("PoloShirtQ1")
+                        .IsRequired()
+                        .HasColumnType("int");
+
+                    b.Property<int?>("PoloShirtQ2")
+                        .IsRequired()
+                        .HasColumnType("int");
+
+                    b.Property<int?>("TshirtQ1")
+                        .IsRequired()
+                        .HasColumnType("int");
+
+                    b.Property<int?>("TshirtQ2")
+                        .IsRequired()
+                        .HasColumnType("int");
+
+                    b.Property<int?>("WindQ1")
+                        .IsRequired()
+                        .HasColumnType("int");
+
+                    b.Property<int?>("WindQ2")
+                        .IsRequired()
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Votes");
+                });
+
+            modelBuilder.Entity("EMSWebApp.Models.YearLevel", b =>
+                {
+                    b.Property<int>("YearLevelId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("YearLevelId"));
+
+                    b.Property<string>("Level")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("YearLevelId");
+
+                    b.ToTable("YearLevel");
+
+                    b.HasData(
+                        new
+                        {
+                            YearLevelId = 1,
+                            Level = "1st Year"
+                        },
+                        new
+                        {
+                            YearLevelId = 2,
+                            Level = "2nd Year"
+                        },
+                        new
+                        {
+                            YearLevelId = 3,
+                            Level = "3rd Year"
+                        },
+                        new
+                        {
+                            YearLevelId = 4,
+                            Level = "4th Year"
+                        });
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole<int>", b =>
@@ -486,11 +737,19 @@ namespace EMSWebApp.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("EMSWebApp.Models.YearLevel", "YearLevel")
+                        .WithMany()
+                        .HasForeignKey("YearLevelId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.Navigation("RegisterStatus");
 
                     b.Navigation("TicketType");
 
                     b.Navigation("UserEvent");
+
+                    b.Navigation("YearLevel");
                 });
 
             modelBuilder.Entity("EMSWebApp.Models.TicketType", b =>
