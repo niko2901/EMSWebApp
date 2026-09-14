@@ -1,28 +1,42 @@
 ﻿<!DOCTYPE html>
 <html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <base href="/" />
+        @* <link rel="stylesheet" href="bootstrap/bootstrap.min.css" /> *@
+        @* <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous"> *@
 
-<head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <base href="/" />
-    @* <link rel="stylesheet" href="bootstrap/bootstrap.min.css" /> *@
-    @* <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous"> *@
+        <link href="bootstrap/css/bootstrap.min.css" rel="stylesheet" />
+        <link href="bootstrap-icons/bootstrap-icons.min.css" rel="stylesheet" />
+        <link rel="stylesheet" href="app.css" />
+        <link rel="stylesheet" href="EMSWebApp.styles.css" />
 
-    <link href="bootstrap/css/bootstrap.min.css" rel="stylesheet" />
-    <link href="bootstrap-icons/bootstrap-icons.min.css" rel="stylesheet" />
-    <link rel="stylesheet" href="app.css" />
-    <link rel="stylesheet" href="EMSWebApp.styles.css" />
+        <link rel="icon" type="image/png" href="favicon.png" />
+        <HeadOutlet />
+    </head>
 
-    <link rel="icon" type="image/png" href="favicon.png" />
-    <HeadOutlet />
-</head>
-
-<body>
-    <Routes />
-    <script src="_framework/blazor.web.js"></script>
-    <script src="_content/Heron.BlazorQRScanner/jsQR.js"></script>
-    <script src="js/qrHelper.js"></script>
-</body>
-
+    <body>
+        <Routes />
+        <script src="_framework/blazor.web.js"></script>
+        <script src="_content/Heron.BlazorQRScanner/jsQR.js"></script>
+        <script src="js/qrHelper.js"></script>
+        <script>
+            // Intercept camera requests to cap resolution to 720p maximum
+            const originalGetUserMedia = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
+            navigator.mediaDevices.getUserMedia = function (constraints) {
+                if (constraints && constraints.video) {
+                    // Force reasonable resolution for QR scanning
+                    constraints.video = {
+                        ...((typeof constraints.video === 'object') ? constraints.video : {}),
+                        width: { ideal: 640, max: 1280 },
+                        height: { ideal: 480, max: 720 },
+                        frameRate: { ideal: 30, max: 60 } // 15-24 FPS is plenty for QR detection
+                    };
+                }
+                return originalGetUserMedia(constraints);
+            };
+        </script>
+    </body>
 </html>
